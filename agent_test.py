@@ -9,11 +9,11 @@ if __name__ == "__main__":
     
     print(obj.reset())
 
-    for i in range(10):
+    for i in range(20):
         
         action = obj.action_space.sample()
         obs,reward,_,_,info = obj.step(action,mkt_price)
-        print(f'Step : {obj.current_step}, Action : {action}, Reward : {reward}')
+        print(f"Step : {info['clock']}, Vol_Lvl : {info['state']['vol_lvl']}, Action : {action}, Reward : {reward}")
         
         tot_rew += reward
     
