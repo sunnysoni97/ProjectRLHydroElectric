@@ -130,3 +130,5 @@ dmypy.json
 
 #sunny
 rough_space/
+.vscode/
+
