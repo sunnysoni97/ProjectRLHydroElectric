@@ -6,28 +6,34 @@ class DamAgent(gym.Env):
     
     base_action_list = ['do_nothing','sell','buy']
 
-    def __init__(self, base_vol:int=1e5, base_height:int=30, n_actions:int=3) -> None:
+    def __init__(self, data: np.ndarray, base_vol:int=1e5, base_height:int=30, n_actions:int=3) -> None:
         
         self.base_vol = base_vol
         self.base_height = base_height
         
         self.action_space = spaces.Discrete(n_actions)
-        self.observation_space = spaces.Dict({'vol_lvl':spaces.Box(low=0,high=self.base_vol,dtype=int)})
-        
+        # self.observation_space = spaces.Dict({'vol_lvl':spaces.Box(low=0,high=self.base_vol,dtype=int),
+        # 'features': spaces.Box(low=np.array([0.0, 0.0]), high= np.array([np.inf, np.inf]), dtype=np.float32)})
+        # 'price', 'bollinger_up', 'bollinger_middle', 'bollinger_down', '120h / 5day EMA', '480h / 20day EMA', '2400h / 100day EMA', '120h / 5day ATR', 'vol_lvl'
+        self.observation_space = spaces.Box(low=np.zeros(9), high= np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, self.base_vol]), dtype=np.float32)
+        #adding a column of zeros for storing the water volume
+        self.state_space =np.concatenate((data, np.zeros((data.shape[0], 1))), axis=1)
+        self.state_space[0][-1] = self.base_vol
         self.clock = 0
-        self.state = {'vol_lvl':self.base_vol}
+        self.state = self.state_space[self.clock]
 
-        print("Agent initialised.")
+        print("Environment initialised.")
         return
 
     def __get_obs(self) -> int:
-        return self.state['vol_lvl']
+        self.state = self.state_space[self.clock]
+        return self.state
     
     def __get_info(self) -> dict:
         return {'state':self.state, 'clock':self.clock}
 
     def reset(self) -> tuple:
-        self.state['vol_lvl'] = self.base_vol
+        self.state=self.state_space[0]
         self.clock = 0
         return (self.__get_obs(), self.__get_info())
 
@@ -42,16 +48,16 @@ class DamAgent(gym.Env):
             eff_factor = 0.8
             max_delta *= eff_factor
 
-            if(self.__get_obs()+max_delta > self.base_vol):
-                delta = self.base_vol - self.__get_obs()
+            if(self.__get_obs()[-1]+max_delta > self.base_vol):
+                delta = self.base_vol - self.__get_obs()[-1]
             else:
                 delta = max_delta
 
         else:
             eff_factor = 0.9
             
-            if(self.__get_obs()-max_delta < 0):
-                delta = -self.__get_obs()
+            if(self.__get_obs()[-1]-max_delta < 0):
+                delta = -self.__get_obs()[-1]
             else:
                 delta = -max_delta
 
@@ -62,7 +68,7 @@ class DamAgent(gym.Env):
         
         pot_energy /= 3.6e9
         reward = -pot_energy * market_price
-        self.state['vol_lvl'] += delta
+        self.state[-1] += delta
         
         return reward
     
@@ -81,10 +87,17 @@ class DamAgent(gym.Env):
         elif(action_string == 'buy'):  
             reward = self.__generate_reward(bool_buy=True, market_price=market_price)
 
-        self.clock += 1
-        observation = self.__get_obs()
-        info = self.__get_info()
-        return (observation, reward, False, False, info)
+        if self.clock < self.state_space.shape[0]-2:
+            terminated = False
+            self.clock += 1
+            observation = self.__get_obs()
+            info = self.__get_info()
+        else:
+            observation = self.__get_obs()
+            info = self.__get_info()
+            terminated = True
+
+        return (observation, reward, terminated, False, info)
         
 
     
