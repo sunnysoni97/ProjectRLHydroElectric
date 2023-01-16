@@ -9,8 +9,6 @@ from collections import deque
 
 from Agent import DamAgent
 
-#TODO: We need to incorporate the dataset at some point. For now, not sure where it should be loaded.
-
 class DQN(nn.Module):
     
     def __init__(self, env, learning_rate):
@@ -23,7 +21,7 @@ class DQN(nn.Module):
         '''
         
         super(DQN,self).__init__()
-        input_features = env.observation_space.shape[0] #TODO: DamAgent returns the observation space as Dict so it will have to be flattened. However, we might consider just a Box
+        input_features = env.observation_space.shape[0] 
         action_space = env.action_space.n
         
         '''
@@ -76,7 +74,7 @@ class ExperienceReplay:
         
         print('Please wait, the experience replay buffer will be filled with random transitions')
                 
-        obs, _ = self.env.reset() #TODO: This applies to every reset. We need to set it to the first timestamp (?)
+        obs, _ = self.env.reset()
         for _ in range(self.min_replay_size):
             
         #Solution:
@@ -113,7 +111,6 @@ class ExperienceReplay:
         
         transitions = random.sample(self.replay_buffer, batch_size)
 
-        #Solution
         observations = np.asarray([t[0] for t in transitions])
         actions = np.asarray([t[1] for t in transitions])
         rewards = np.asarray([t[2] for t in transitions])
@@ -255,34 +252,8 @@ class DDQNAgent:
         
         self.target_network.load_state_dict(self.online_network.state_dict())
     
-    #TODO: We need to implement a similar function to the one below for validation
-    '''
-    The following method will let the DQNAgent play the game after it has worked 
-    through the number of episodes for training
-    '''
-    # def play_game(self, step=1, seed=123):
+    #TODO: We need to implement a function for validation
         
-    #     '''
-    #     Params:
-    #     step = the number of the step within the epsilon decay that is used for the epsilon value of epsilon-greedy
-    #     seed = seed for random number generator for reproducibility
-    #     '''
-    #     #Get the optimized strategy:
-    #     done = False
-    #     #Reinitialize the game 
-    #     self.env = gym.make(self.env_name, render_mode='human')
-    #     #Start the game
-    #     state, _ = self.env.reset()
-    #     while not done:
-    #         #Pick the best action 
-    #         action = self.choose_action(step, state, True)[0]
-    #         next_state, rew, terminated, truncated, _ = self.env.step(action)
-    #         done = terminated or truncated 
-    #         state = next_state
-    #         #Pause to make it easier to watch
-    #         time.sleep(0.05)
-    #     #Close the pop-up window
-    #     self.env.close()
 
 def training_loop(env, agent, max_episodes, batch_size, seed=42):
     
@@ -305,15 +276,10 @@ def training_loop(env, agent, max_episodes, batch_size, seed=42):
     episode_reward = 0.0
     
     for step in range(env.state_space.shape[0]*max_episodes):
-        # print("Episode ", step)
-        # print("obs: ", obs)
-        # print("--"*20)
         
         action, epsilon = agent.choose_action(step, obs)
-       
         new_obs, rew, terminated, truncated, _ = env.step(action, env.state_space[env.clock][0])
-        # print("market price", env.state_space[step][0])
-        # print("rew: ", rew)
+
         done = terminated or truncated        
         transition = (obs, action, rew, done, new_obs)
         agent.replay_memory.add_data(transition)
@@ -329,7 +295,6 @@ def training_loop(env, agent, max_episodes, batch_size, seed=42):
             episode_reward = 0.0
 
         #Learn
-
         agent.learn(batch_size)
 
         #Calculate after each 100 episodes an average that will be added to the list
@@ -343,11 +308,11 @@ def training_loop(env, agent, max_episodes, batch_size, seed=42):
             agent.update_target_network()
     
         #Print some output
-        if (step+1) % 10000 == 0:
+        if (step+2) % env.state_space.shape[0] == 0:
             print(20*'--')
-            print('Episode', floor(step/env.state_space.shape[0])+1)
+            print('Episode', floor((step+2)/env.state_space.shape[0]))
             print('Epsilon', epsilon)
-            print('Reward so far', episode_reward)
+            print('Money earned', episode_reward)
             print()
 
     return average_reward_list

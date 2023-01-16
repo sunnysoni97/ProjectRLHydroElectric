@@ -12,10 +12,9 @@ class DamAgent(gym.Env):
         self.base_height = base_height
         
         self.action_space = spaces.Discrete(n_actions)
-        # self.observation_space = spaces.Dict({'vol_lvl':spaces.Box(low=0,high=self.base_vol,dtype=int),
-        # 'features': spaces.Box(low=np.array([0.0, 0.0]), high= np.array([np.inf, np.inf]), dtype=np.float32)})
-        # 'price', 'bollinger_up', 'bollinger_middle', 'bollinger_down', '120h / 5day EMA', '480h / 20day EMA', '2400h / 100day EMA', '120h / 5day ATR', 'vol_lvl'
+        # Features: 'price', 'bollinger_up', 'bollinger_middle', 'bollinger_down', '120h / 5day EMA', '480h / 20day EMA', '2400h / 100day EMA', '120h / 5day ATR', 'vol_lvl'
         self.observation_space = spaces.Box(low=np.zeros(9), high= np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, self.base_vol]), dtype=np.float32)
+        
         #adding a column of zeros for storing the water volume
         self.state_space =np.concatenate((data, np.zeros((data.shape[0], 1))), axis=1)
         self.state_space[0][-1] = self.base_vol
@@ -87,7 +86,7 @@ class DamAgent(gym.Env):
         elif(action_string == 'buy'):  
             reward = self.__generate_reward(bool_buy=True, market_price=market_price)
 
-        if self.clock < self.state_space.shape[0]-2:
+        if self.clock < self.state_space.shape[0]-1:
             terminated = False
             self.clock += 1
             observation = self.__get_obs()
