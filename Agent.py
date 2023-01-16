@@ -27,7 +27,7 @@ class DamAgent(gym.Env):
         return {'state':self.state, 'clock':self.clock}
 
     def reset(self) -> tuple:
-        self.state['vol_lvl'] = self.base_vol
+        self.state['vol_lvl'] = self.base_vol/2
         self.clock = 0
         return (self.__get_obs(), self.__get_info())
 
