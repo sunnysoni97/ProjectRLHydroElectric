@@ -8,7 +8,7 @@ class DamAgent(gym.Env):
 
     def __init__(self, data: np.ndarray, base_vol:int=1e5, base_height:int=30, n_actions:int=3) -> None:
         
-        self.base_vol = base_vol
+        self.base_vol = base_vol/2
         self.base_height = base_height
         
         self.action_space = spaces.Discrete(n_actions)
