@@ -255,7 +255,7 @@ class DDQNAgent:
     #TODO: We need to implement a function for validation
         
 
-def training_loop(env, agent, max_episodes, batch_size, seed=42):
+def training_loop(env, agent, max_episodes, batch_size, target_freq, seed=42):
     
     '''
     Params:
@@ -263,7 +263,7 @@ def training_loop(env, agent, max_episodes, batch_size, seed=42):
     agent = which agent is used to train
     max_episodes = maximum number of games played
     batch_size =  number of transitions that will be sampled
-    target = boolean variable indicating if a target network is used (this will be clear later)
+    target_freq = variable indicating how many times a target network is updated
     seed = seed for random number generator for reproducibility
     
     Returns:
@@ -303,7 +303,7 @@ def training_loop(env, agent, max_episodes, batch_size, seed=42):
             average_reward_list.append(np.mean(agent.replay_memory.reward_buffer))
             
         #Set the target_update_frequency
-        target_update_frequency = 250
+        target_update_frequency = target_freq
         if step % target_update_frequency == 0:
             agent.update_target_network()
     
@@ -343,6 +343,8 @@ if __name__ == "__main__":
     epsilon_end = 0.05
     #Decay period until epsilon start -> epsilon end
     epsilon_decay = 10000
+    #Set the target_update_frequency
+    target_update_freq=250
 
     
 
@@ -360,5 +362,5 @@ if __name__ == "__main__":
 
     dagent = DDQNAgent(dam, device, epsilon_decay, epsilon_start, epsilon_end, discount_rate, lr, buffer_size)
 
-    average_rewards_ddqn = training_loop(dam, dagent, max_episodes, batch_size) 
+    average_rewards_ddqn = training_loop(dam, dagent, max_episodes, batch_size, target_update_freq) 
     
