@@ -26,15 +26,14 @@ class DamAgent(gym.Env):
 
     def __get_obs(self) -> int:
         self.state = self.state_space[self.clock]
-        self.state[-1] = self.state_space[self.clock-1][-1]
         return self.state
     
     def __get_info(self) -> dict:
         return {'state':self.state, 'clock':self.clock}
 
     def reset(self) -> tuple:
-        self.state=self.state_space[0]
         self.clock = 0
+        self.state=self.state_space[self.clock]
         return (self.__get_obs(), self.__get_info())
 
     def __convert_action_to_text(self,action:int) -> str:
@@ -68,7 +67,10 @@ class DamAgent(gym.Env):
         
         pot_energy /= 3.6e9
         reward = -pot_energy * market_price
-        self.state[-1] += delta
+        curr_water_level = self.__get_obs()[-1]
+        self.clock += 1
+        self.state = self.state_space[self.clock]
+        self.state[-1] = curr_water_level + delta
         
         return reward
     
@@ -76,28 +78,34 @@ class DamAgent(gym.Env):
         if (not self.action_space.contains(action)):
             raise AssertionError("Invalid action value for agent step.")
         
-        action_string = self.__convert_action_to_text(action)
+        if self.clock < self.state_space.shape[0]-2:
+            action_string = self.__convert_action_to_text(action)
 
-        reward = 0
+            if(action_string == 'sell'):   
+                reward = self.__generate_reward(bool_buy=False,market_price=market_price)
+            
+            elif(action_string == 'buy'):  
+                reward = self.__generate_reward(bool_buy=True, market_price=market_price)
 
-        if(action_string == 'sell'):   
-            reward = self.__generate_reward(bool_buy=False,market_price=market_price)
+            else:
+                reward = 0
+                self.clock += 1
+                self.state = self.state_space[self.clock]
+                self.state[-1] = self.state_space[self.clock-1][-1]
 
-
-        elif(action_string == 'buy'):  
-            reward = self.__generate_reward(bool_buy=True, market_price=market_price)
-
-        if self.clock < self.state_space.shape[0]-1:
             terminated = False
-            self.clock += 1
-            observation = self.__get_obs()
-            info = self.__get_info()
+
         else:
-            observation = self.__get_obs()
-            info = self.__get_info()
+            reward = 0
             terminated = True
+        
+        observation = self.__get_obs()
+        info = self.__get_info()
 
         return (observation, reward, terminated, False, info)
+
+
+        
         
 
     
