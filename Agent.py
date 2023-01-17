@@ -26,6 +26,7 @@ class DamAgent(gym.Env):
 
     def __get_obs(self) -> int:
         self.state = self.state_space[self.clock]
+        self.state[-1] = self.state_space[self.clock-1][-1]
         return self.state
     
     def __get_info(self) -> dict:
