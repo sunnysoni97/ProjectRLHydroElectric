@@ -3,11 +3,12 @@ import numpy as np
 import os
 
 class QLearnerTabular():
-    def __init__(self, train_data, val_data, discount_rate=0.95) -> None:
+    def __init__(self, train_data:np.ndarray, val_data:np.ndarray, model_path:os.PathLike, discount_rate:float=0.95) -> None:
         self.train_env = DamAgent(train_data)
         self.val_env = DamAgent(val_data)
         self.discount_rate = discount_rate
         self.action_space = self.train_env.action_space.n
+        self.model_path = model_path
         print("Q Learning Agent initialised")
         
     def __state_to_index(self, state_ar:np.ndarray) -> int:
@@ -16,14 +17,28 @@ class QLearnerTabular():
             out += state_ar[i]*pow(10,len(state_ar)-1-i)
         return int(out)
     
-    def init_q_table(self) -> None:
-        max_state = np.max(self.train_env.state_space[:,:-1],axis=0).astype(int)
-        max_state = self.__state_to_index(max_state)
-        self.q_table = np.zeros((max_state,self.action_space))
+    def __init_q_table(self) -> None:
+        max_state_price = np.max(np.max(self.train_env.state_space[:,0],axis=0)).astype(int)
+        max_state_hour = np.max(np.max(self.train_env.state_space[:,1],axis=0)).astype(int)
+        max_state_month = np.max(np.max(self.train_env.state_space[:,2],axis=0)).astype(int)
+        self.q_table = np.zeros((max_state_price,max_state_hour,max_state_month,self.action_space))
+        print(self.q_table.shape)
         print("Q table initialised")
 
-    def train(self, simulations, learning_rate, epsilon = 0.05, epsilon_decay = 1000, adaptive_epsilon = False, 
-              adapting_learning_rate = False):
+    def __save_model_to_file(self) -> None:
+        if(not os.path.exists(os.path.dirname(self.model_path))):
+            os.makedirs(os.path.dirname(self.model_path))
+        
+        with open(self.model_path,'wb') as f:
+            np.save(f,self.q_table)
+        print(f"Model saved to file : {self.model_path}")    
+    
+    def __check_non_zeros(self,ar:np.ndarray) -> None:
+        non_zero = ar[ar!=0]
+        print(f"Number of non_zeroes : {non_zero.size}")
+
+    def train(self, simulations:int, learning_rate:float, epsilon:float = 0.05, epsilon_decay:int = 1000, adaptive_epsilon:bool = False, 
+              adapting_learning_rate:bool = False) -> None:
         
         '''
         Params:
@@ -41,9 +56,11 @@ class QLearnerTabular():
         
         self.rewards = []
         self.average_rewards = []
-        
+        best_reward = -np.inf
+
+
         #Call the Q table function to create an initialized Q table
-        self.init_q_table()
+        self.__init_q_table()
         
         #Set epsilon rate, epsilon decay and learning rate
         self.epsilon = epsilon
@@ -60,12 +77,13 @@ class QLearnerTabular():
         
         for i in range(simulations):
             
-            if i%10 == 0:
+            if i%200 == 0:
                 print(f'Please wait, the algorithm is learning! The current simulation is {i}')
+
             #Initialize the state
             state = self.train_env.reset()[0]   # reset returns a dict, need to take the 0th entry.
-            state = state[:-1]
-        
+            state = state.astype(int)
+
             #Set a variable that flags if an episode has terminated
             done = False
             
@@ -100,43 +118,70 @@ class QLearnerTabular():
                     
                 #Pick a greedy action
                 else:
-                    action = np.argmax(self.q_table[self.__state_to_index(state),:])
+                    action = np.argmax(self.q_table[state[0]-1,state[1]-1,state[2]-1,:])
                     
                 #Now sample the next_state, reward, done and info from the environment
                 
                 next_state, reward, terminated, truncated, info = self.train_env.step(action,state[0]) # step returns 5 outputs
-                next_state = next_state[:-1]
+                next_state = next_state.astype(int)
                 done =  terminated or truncated
                 
 
                 #Target value 
-                Q_target = (reward + self.discount_rate*np.max(self.q_table[self.__state_to_index(next_state)]))
+                Q_target = (reward + self.discount_rate*np.max(self.q_table[next_state[0]-1,next_state[1]-1,next_state[2]-1]))
                 
                 #Calculate the Temporal difference error (delta)
-                delta = self.learning_rate * (Q_target - self.q_table[self.__state_to_index(state), action])
+                delta = self.learning_rate * (Q_target - self.q_table[state[0]-1, state[1]-1, state[2]-1, action])
                 
                 #Update the Q-value
-                self.q_table[self.__state_to_index(state), action] = self.q_table[self.__state_to_index(state), action] + delta
+                self.q_table[state[0]-1, state[1]-1, state[2]-1, action] += delta
                 
                 #Update the reward and the hyperparameters
                 total_rewards += reward
                 state = next_state
                 
             
-            if adapting_learning_rate:
-                self.learning_rate = self.learning_rate/np.sqrt(i+1)
+            if adapting_learning_rate and i%10 == 0:
+                self.learning_rate = self.learning_rate/np.sqrt((i/10)+1)
             
             self.rewards.append(total_rewards)
             
             #Calculate the average score over 100 episodes
-            if i % 10 == 0:
+            if i % 200 == 0:
                 self.average_rewards.append(np.mean(self.rewards))
-                print(f'Avg of Last 10 rewards : {self.average_rewards[-1]}')               
+                print(f'Avg of Last 200 rewards : {self.average_rewards[-1]}')               
                 #Initialize a new reward list, as otherwise the average values would reflect all rewards!
                 self.rewards = []
-        
+
+            #save the best model
+            if total_rewards > best_reward+1:
+                self.__save_model_to_file()
+                best_reward = total_rewards
+
         print('The simulation is done!')
-        print(f'Rewards : {self.average_rewards}')
+        print(f'Average Rewards : {self.average_rewards}')
+
+    def validate(self) -> list:
+        with open(self.model_path,'rb') as f:
+            self.q_table = np.load(f)
+        
+        total_rewards = []
+        done = False
+
+        state = self.val_env.reset()[0]
+        state = state.astype(int)
+        action_list = []
+        while(not done):
+            action = np.argmax(self.q_table[state[0]-1, state[1]-1, state[2]-1, :])
+            action_list.append(action)
+            mkt_price = state[0]
+            state, reward, done, _, _ = self.val_env.step(action,mkt_price)
+            state = state.astype(int)
+            total_rewards.append(reward)
+
+        print(np.unique(action_list,return_counts=True))
+        print(f"Total reward on validation set : {np.sum(total_rewards)}")
+        return total_rewards
 
 
 if __name__ == "__main__":
@@ -150,11 +195,14 @@ if __name__ == "__main__":
 
     print("Training and Validation Data Loaded")
 
-    QAgent = QLearnerTabular(train_data=training_data, val_data=validation_data)
+    def_model_path = os.path.join(os.path.dirname(__file__),'model/tabular_q/model.npy')
+    
+    QAgent = QLearnerTabular(train_data=training_data, val_data=validation_data, model_path=def_model_path)
 
-    lr = 0.15
-    simulations = 1000
+    lr = 0.10
+    simulations = 5000
 
-    QAgent.train(simulations=simulations,learning_rate=lr)
+    #QAgent.train(simulations=simulations,learning_rate=lr)
+    rewards = QAgent.validate()
 
     
