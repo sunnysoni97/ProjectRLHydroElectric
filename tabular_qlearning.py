@@ -162,11 +162,12 @@ class QLearnerTabular():
         print('The simulation is done!')
         print(f'Average Rewards : {self.average_rewards}')
 
-    def validate(self) -> list:
+    def validate(self) -> tuple:
         with open(self.model_path,'rb') as f:
             self.q_table = np.load(f)
         
         total_rewards = []
+        total_actions = []
         done = False
 
         state = self.val_env.reset()[0]
@@ -177,12 +178,22 @@ class QLearnerTabular():
             action_list.append(action)
             mkt_price = state[0]
             state, reward, done, _, _ = self.val_env.step(action,mkt_price)
+            action_taken = reward/mkt_price
             state = state.astype(int)
             total_rewards.append(reward)
+            total_actions.append(action_taken)
 
-        print(np.unique(action_list,return_counts=True))
+        #print(np.unique(action_list,return_counts=True))
         print(f"Total reward on validation set : {np.sum(total_rewards)}")
-        return total_rewards
+        print(f"Total action on validation set : {np.sum(total_actions)}")
+        
+        with open(os.path.join(os.path.dirname(self.model_path),'experiment_results.txt'),'wt') as f:
+            f.write(f"Total reward on validation set : {np.sum(total_rewards)}\n")
+            f.write(str(total_rewards))
+            f.write(f"\nTotal action on validation set : {np.sum(total_actions)}\n")
+            f.write(str(total_actions))
+        
+        return total_rewards, total_actions
 
 
 if __name__ == "__main__":
@@ -198,7 +209,7 @@ if __name__ == "__main__":
 
     def_model_path = os.path.join(os.path.dirname(__file__),'model/tabular_q/model.npy')
     
-    QAgent = QLearnerTabular(train_data=training_data, val_data=validation_data, model_path=def_model_path, discount_rate=0.9999)
+    QAgent = QLearnerTabular(train_data=training_data, val_data=validation_data, model_path=def_model_path, discount_rate=0.95)
 
     lr = 0.10
     simulations = 500
