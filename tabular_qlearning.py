@@ -212,7 +212,7 @@ if __name__ == "__main__":
     QAgent = QLearnerTabular(train_data=training_data, val_data=validation_data, model_path=def_model_path, discount_rate=0.95)
 
     lr = 0.10
-    simulations = 500
+    simulations = 1000
 
     QAgent.train(simulations=simulations,learning_rate=lr)
     rewards = QAgent.validate()
