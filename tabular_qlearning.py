@@ -57,7 +57,7 @@ class QLearnerTabular():
         
         self.rewards = []
         self.average_rewards = []
-        best_reward = -np.inf
+        best_reward_train = -np.inf
 
 
         #Call the Q table function to create an initialized Q table
@@ -76,6 +76,8 @@ class QLearnerTabular():
         if adapting_learning_rate:
             self.learning_rate = 1
         
+        best_reward_val = self.validate()
+
         for i in range(simulations):
             
             if i%50 == 0:
@@ -155,16 +157,21 @@ class QLearnerTabular():
                 self.rewards = []
 
             #save the best model
-            if total_rewards > best_reward+1:
-                self.__save_model_to_file()
-                best_reward = total_rewards
+            if total_rewards > best_reward_train+1: 
+                cur_reward_val = self.validate()
+                if(cur_reward_val > best_reward_val+1):
+                    self.__save_model_to_file()
+                    best_reward_train = total_rewards
+                    best_reward_val = cur_reward_val
 
         print('The simulation is done!')
         print(f'Average Rewards : {self.average_rewards}')
 
-    def validate(self) -> tuple:
-        with open(self.model_path,'rb') as f:
-            self.q_table = np.load(f)
+    def validate(self,load_model:bool=False) -> tuple:
+        
+        if(load_model):
+            with open(self.model_path,'rb') as f:
+                self.q_table = np.load(f)
         
         total_rewards = []
         total_actions = []
@@ -182,10 +189,6 @@ class QLearnerTabular():
             state = state.astype(int)
             total_rewards.append(reward)
             total_actions.append(action_taken)
-
-        #print(np.unique(action_list,return_counts=True))
-        print(f"Total reward on validation set : {np.sum(total_rewards)}")
-        print(f"Total action on validation set : {np.sum(total_actions)}")
         
         with open(os.path.join(os.path.dirname(self.model_path),'experiment_results.txt'),'wt') as f:
             f.write(f"Total reward on validation set : {np.sum(total_rewards)}\n")
@@ -193,7 +196,7 @@ class QLearnerTabular():
             f.write(f"\nTotal action on validation set : {np.sum(total_actions)}\n")
             f.write(str(total_actions))
         
-        return total_rewards, total_actions
+        return np.sum(total_rewards)
 
 
 if __name__ == "__main__":
@@ -212,9 +215,11 @@ if __name__ == "__main__":
     QAgent = QLearnerTabular(train_data=training_data, val_data=validation_data, model_path=def_model_path, discount_rate=0.95)
 
     lr = 0.10
-    simulations = 1000
+    simulations = 501
 
     QAgent.train(simulations=simulations,learning_rate=lr)
-    rewards = QAgent.validate()
+    print("Validation of Best Model running : ")
+    rewards = QAgent.validate(load_model=True)
+    print(f"Total simulation reward on validation set = {rewards}")
 
     
