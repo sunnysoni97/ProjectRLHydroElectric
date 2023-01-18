@@ -16,14 +16,19 @@ class DamAgent(gym.Env):
         self.observation_space = spaces.Box(low=np.zeros(9), high= np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, self.base_vol]), dtype=np.float32)
         
         #adding a column of zeros for storing the water volume
-        self.state_space =np.concatenate((data, np.zeros((data.shape[0], 1))), axis=1)
+        self.state_space =np.concatenate((data, np.zeros((data.shape[0], 1)), np.zeros((data.shape[0], 1))), axis=1)
         self.state_space[0][-1] = self.base_vol
+        self.state_space[0][-2] = self.__discretize_vol(self.state_space[0][-1])
         self.clock = 0
         self.state = self.state_space[self.clock]
 
         print("Environment initialised.")
         return
 
+    def __discretize_vol(self, vol:int) -> int:
+        out_vol = np.floor(vol/1e4).astype(int)
+        return out_vol
+    
     def __get_obs(self) -> int:
         self.state = self.state_space[self.clock]
         return self.state
@@ -71,6 +76,7 @@ class DamAgent(gym.Env):
         self.clock += 1
         self.state = self.state_space[self.clock]
         self.state[-1] = curr_water_level + delta
+        self.state[-2] = self.__discretize_vol(self.state[-1])
         
         return reward
     
@@ -92,6 +98,7 @@ class DamAgent(gym.Env):
                 self.clock += 1
                 self.state = self.state_space[self.clock]
                 self.state[-1] = self.state_space[self.clock-1][-1]
+                self.state[-2] = self.__discretize_vol(self.state[-1])
 
             terminated = False
 

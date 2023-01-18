@@ -21,7 +21,8 @@ class QLearnerTabular():
         max_state_price = np.max(np.max(self.train_env.state_space[:,0],axis=0)).astype(int)
         max_state_hour = np.max(np.max(self.train_env.state_space[:,1],axis=0)).astype(int)
         max_state_month = np.max(np.max(self.train_env.state_space[:,2],axis=0)).astype(int)
-        self.q_table = np.zeros((max_state_price,max_state_hour,max_state_month,self.action_space))
+        max_state_vol = 10+1
+        self.q_table = np.zeros((max_state_price,max_state_hour,max_state_month,max_state_vol,self.action_space))
         print(self.q_table.shape)
         print("Q table initialised")
 
@@ -77,7 +78,7 @@ class QLearnerTabular():
         
         for i in range(simulations):
             
-            if i%200 == 0:
+            if i%50 == 0:
                 print(f'Please wait, the algorithm is learning! The current simulation is {i}')
 
             #Initialize the state
@@ -118,7 +119,7 @@ class QLearnerTabular():
                     
                 #Pick a greedy action
                 else:
-                    action = np.argmax(self.q_table[state[0]-1,state[1]-1,state[2]-1,:])
+                    action = np.argmax(self.q_table[state[0]-1,state[1]-1,state[2]-1,state[3]-1,:])
                     
                 #Now sample the next_state, reward, done and info from the environment
                 
@@ -128,13 +129,13 @@ class QLearnerTabular():
                 
 
                 #Target value 
-                Q_target = (reward + self.discount_rate*np.max(self.q_table[next_state[0]-1,next_state[1]-1,next_state[2]-1]))
+                Q_target = (reward + self.discount_rate*np.max(self.q_table[next_state[0]-1,next_state[1]-1,next_state[2]-1,next_state[3]-1]))
                 
                 #Calculate the Temporal difference error (delta)
-                delta = self.learning_rate * (Q_target - self.q_table[state[0]-1, state[1]-1, state[2]-1, action])
+                delta = self.learning_rate * (Q_target - self.q_table[state[0]-1, state[1]-1, state[2]-1, state[3]-1, action])
                 
                 #Update the Q-value
-                self.q_table[state[0]-1, state[1]-1, state[2]-1, action] += delta
+                self.q_table[state[0]-1, state[1]-1, state[2]-1, state[3]-1, action] += delta
                 
                 #Update the reward and the hyperparameters
                 total_rewards += reward
@@ -147,9 +148,9 @@ class QLearnerTabular():
             self.rewards.append(total_rewards)
             
             #Calculate the average score over 100 episodes
-            if i % 200 == 0:
+            if i % 50 == 0:
                 self.average_rewards.append(np.mean(self.rewards))
-                print(f'Avg of Last 200 rewards : {self.average_rewards[-1]}')               
+                print(f'Avg of Last 50 rewards : {self.average_rewards[-1]}')               
                 #Initialize a new reward list, as otherwise the average values would reflect all rewards!
                 self.rewards = []
 
@@ -172,7 +173,7 @@ class QLearnerTabular():
         state = state.astype(int)
         action_list = []
         while(not done):
-            action = np.argmax(self.q_table[state[0]-1, state[1]-1, state[2]-1, :])
+            action = np.argmax(self.q_table[state[0]-1, state[1]-1, state[2]-1,state[3]-1, :])
             action_list.append(action)
             mkt_price = state[0]
             state, reward, done, _, _ = self.val_env.step(action,mkt_price)
@@ -197,12 +198,12 @@ if __name__ == "__main__":
 
     def_model_path = os.path.join(os.path.dirname(__file__),'model/tabular_q/model.npy')
     
-    QAgent = QLearnerTabular(train_data=training_data, val_data=validation_data, model_path=def_model_path)
+    QAgent = QLearnerTabular(train_data=training_data, val_data=validation_data, model_path=def_model_path, discount_rate=0.9999)
 
     lr = 0.10
-    simulations = 5000
+    simulations = 500
 
-    #QAgent.train(simulations=simulations,learning_rate=lr)
+    QAgent.train(simulations=simulations,learning_rate=lr)
     rewards = QAgent.validate()
 
     
