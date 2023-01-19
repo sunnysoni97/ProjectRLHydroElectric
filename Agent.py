@@ -66,7 +66,7 @@ class DamAgent(gym.Env):
                 delta = -max_delta
 
         if(bool_buy):
-            pot_energy = 1000*(1.2*delta)*9.81*self.base_height
+            pot_energy = 1000*(1.25*delta)*9.81*self.base_height
         else:
             pot_energy = 1000*eff_factor*delta*9.81*self.base_height
         
