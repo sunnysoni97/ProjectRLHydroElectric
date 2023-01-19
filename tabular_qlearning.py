@@ -38,8 +38,8 @@ class QLearnerTabular():
         non_zero = ar[ar!=0]
         print(f"Number of non_zeroes : {non_zero.size}")
 
-    def train(self, simulations:int, learning_rate:float, epsilon:float = 0.05, epsilon_decay:int = 1000, adaptive_epsilon:bool = False, 
-              adapting_learning_rate:bool = False) -> None:
+    def train(self, simulations:int, learning_rate:float, epsilon:float = 0.05, epsilon_decay:int = 1000, early_stopping_value:int=500, adaptive_epsilon:bool = False, 
+              adapting_learning_rate:bool = False, early_stopping:bool=False) -> None:
         
         '''
         Params:
@@ -78,8 +78,12 @@ class QLearnerTabular():
         
         best_reward_val = self.validate()
 
+        early_stop_ctr = 0
+
         for i in range(simulations):
             
+            early_stop_ctr += 1
+
             if i%50 == 0:
                 print(f'Please wait, the algorithm is learning! The current simulation is {i}')
 
@@ -163,6 +167,12 @@ class QLearnerTabular():
                     self.__save_model_to_file()
                     best_reward_train = total_rewards
                     best_reward_val = cur_reward_val
+                    early_stop_ctr = 0
+
+            #check for early stopping
+            if (early_stop_ctr == early_stopping_value):
+                print("Early stopping due to no change!")
+                break
 
         print('The simulation is done!')
         print(f'Average Rewards : {self.average_rewards}')
@@ -215,9 +225,9 @@ if __name__ == "__main__":
     QAgent = QLearnerTabular(train_data=training_data, val_data=validation_data, model_path=def_model_path, discount_rate=0.95)
 
     lr = 0.10
-    simulations = 501
+    simulations = 10000
 
-    QAgent.train(simulations=simulations,learning_rate=lr)
+    QAgent.train(simulations=simulations,learning_rate=lr,early_stopping_value=500,early_stopping=True)
     print("Validation of Best Model running : ")
     rewards = QAgent.validate(load_model=True)
     print(f"Total simulation reward on validation set = {rewards}")
