@@ -8,9 +8,15 @@
 
 5. Overleaf report.
 
-6. Presentation
+- Cite the sources for market analysis and stuff like articles, but not too much
+- Focus on analysis of the results and analysis, only show small tables of results
+- Go deep on discussion about results like why somethings work better, why not
+- Also put a little bit of code snippets of algos and stuff in appendix, not needed in the main report
+- Focus on conceptual ideas more than implementation and coding part
 
-7. Clean up this fucking code directory in the end.
+6. Presentation.
+
+7. Clean up this fucking code directory in the end. Also update readmes and steps for execution.
 
 -------------------------
 
@@ -20,12 +26,12 @@ Number of suggested baselines until now :
 
 2. Tabular :
 
-i Low number of features (including non engineered)
+i Low number of features (not including engineered)
 ii High number of features (including engineered ones)
 
 3. Deep Q Learning :
 
-i Low number of features (including non engineered)
+i Low number of features (not including engineered)
 ii High number of features (including engineered ones)
 
 --------------------------
