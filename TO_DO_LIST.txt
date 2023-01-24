@@ -1,0 +1,31 @@
+1. Implement DQN pipeline.
+
+2. Research and play with day trading features
+
+3. Reward shaping
+
+4. Hyperparameter optimisation (Discount Factor, Learning Rate, Epsilon, Replay Buffer Length, More if we can think...)
+
+5. Overleaf report.
+
+6. Presentation
+
+7. Clean up this fucking code directory in the end.
+
+-------------------------
+
+Number of suggested baselines until now :
+
+1. Random baseline
+
+2. Tabular :
+
+i Low number of features (including non engineered)
+ii High number of features (including engineered ones)
+
+3. Deep Q Learning :
+
+i Low number of features (including non engineered)
+ii High number of features (including engineered ones)
+
+--------------------------
