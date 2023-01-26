@@ -1,5 +1,6 @@
 import numpy as np
 import Agent_Final
+from collections import deque
 
 if __name__ == "__main__":
     with open('data/train_data/train_discrete.npy','rb') as f:
@@ -20,3 +21,8 @@ if __name__ == "__main__":
         reward += cur_reward
     
     print("Total reward in 1 simul : ", reward)
+    
+    '''
+    a = deque([-np.inf],maxlen=100)
+    print(a[0])
+    '''

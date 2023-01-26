@@ -62,8 +62,12 @@ class DamAgent(gym.Env):
     def __get_info(self) -> dict:
         return {'state':self.state, 'clock':self.clock}
 
-    def reset(self) -> tuple:
-        self.clock = 0
+    def reset(self, do_random:bool=False) -> tuple:
+        if(do_random):
+            self.clock = np.random.randint(low=0,high=self.state_space.shape[0]+1)
+        else:
+            self.clock = 0
+        
         self.state=self.state_space[self.clock]
         return (self.__get_obs(), self.__get_info())
 
