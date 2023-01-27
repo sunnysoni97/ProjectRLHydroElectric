@@ -8,13 +8,12 @@ import random
 
 class DQN(nn.Module):
     
-    def __init__(self, env, learning_rate):
+    def __init__(self, env, learning_rate:float) -> None:
         
         '''
         Params:
         env = environment that the agent needs to play
         learning_rate = learning rate used in the update
-        
         '''
         
         super(DQN,self).__init__()
@@ -31,7 +30,7 @@ class DQN(nn.Module):
         #using adam optimiser
         self.optimizer = optim.Adam(self.parameters(), lr = learning_rate)
         
-    def forward(self, x):
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
         
         '''
         Params:
@@ -49,29 +48,33 @@ class DQN(nn.Module):
 
 class ExperienceReplay:
     
-    def __init__(self, env, buffer_size, min_replay_size = 1000, seed = 123):
+    def __init__(self, env, device, buffer_size:int, min_replay_size:int, seed:int = None) -> None:
         
         '''
         Params:
         env = environment that the agent needs to play
+        device = torch device to use
         buffer_size = max number of transitions that the experience replay buffer can store
         min_replay_size = min number of (random) transitions that the replay buffer needs to have when initialized
         seed = seed for random number generator for reproducibility
         '''
+
         self.env = env
         self.min_replay_size = min_replay_size
         self.replay_buffer = deque(maxlen=buffer_size)
-        self.reward_buffer = deque([-200.0], maxlen = 100)
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.reward_buffer = deque([-34000.0], maxlen = 100)
+        self.device = device
         
         print('Please wait, the experience replay buffer will be filled with random transitions')
-                
-        obs, _ = self.env.reset(seed=seed)
+
+        #initialising replay buffer with random transitions
+
+        obs, _ = self.env.reset(do_random=True)
+        
         for _ in range(self.min_replay_size):
             
-        #initialising replay buffer with random transitions
             action = env.action_space.sample()
-            new_obs, rew, terminated, truncated, _ = env.step(action)
+            new_obs, rew, terminated, truncated, _ = env.step(action,obs[0])
             done = terminated or truncated
 
             transition = (obs, action, rew, done, new_obs)
@@ -79,19 +82,26 @@ class ExperienceReplay:
             obs = new_obs
     
             if done:
-                obs, _ = env.reset(seed=seed)
+                obs, _ = env.reset(do_random=True)
         
         print('Initialization with random transitions is done!')
       
+        #seeding random number generator for sampling
+        self.seed = seed
+        random.seed(self.seed)
           
-    def add_data(self, data): 
+    def add_data(self, data:tuple) -> None: 
+        
         '''
         Params:
         data = relevant data of a transition, i.e. action, new_obs, reward, done
         '''
+
+        #adding new transition to replay buffer
+
         self.replay_buffer.append(data)
             
-    def sample(self, batch_size):
+    def sample(self, batch_size:int) -> tuple:
         
         '''
         Params:
@@ -119,32 +129,26 @@ class ExperienceReplay:
         
         return observations_t, actions_t, rewards_t, dones_t, new_observations_t
     
-    def add_reward(self, reward):
+    def add_reward(self, reward:float) -> None:
         
         '''
         Params:
         reward = reward that the agent earned during an episode of a game
         '''
-        
+
+        #adding reward to reward buffer        
+
         self.reward_buffer.append(reward)
         
 class DDQNAgent:
     
-    def __init__(self, env, device, epsilon_decay, 
-                 epsilon_start, epsilon_end, discount_rate, lr, buffer_size, seed = 123):
-        '''
-        Params:
-        env = name of the environment that the agent needs to play
-        device = set up to run CUDA operations
-        epsilon_decay = Decay period until epsilon start -> epsilon end
-        epsilon_start = starting value for the epsilon value
-        epsilon_end = ending value for the epsilon value
-        discount_rate = discount rate for future rewards
-        lr = learning rate
-        buffer_size = max number of transitions that the experience replay buffer can store
-        seed = seed for random number generator for reproducibility
-        '''
+    def __init__(self, env, device, val_env:np.array=None, 
+                 epsilon_decay:int=int(2e4), epsilon_start:float=1.0, epsilon_end:float=0.05, discount_rate:float=0.99, lr:float=5e-4, 
+                 buffer_size:int=int(1e5), min_replay_size:int=int(1e4), replay_batch_size:int=168, update_freq_ratio:float=0.01, 
+                 n_simuls:int=100, seed:int = None) -> None:
+      
         self.env = env
+        self.val_env = val_env
         self.device = device
         self.epsilon_decay = epsilon_decay
         self.epsilon_start = epsilon_start
@@ -152,20 +156,25 @@ class DDQNAgent:
         self.discount_rate = discount_rate
         self.learning_rate = lr
         self.buffer_size = buffer_size
-        
-        self.replay_memory = ExperienceReplay(self.env, self.buffer_size, seed = seed)
+        self.min_replay_size = min_replay_size
+        self.replay_batch_size = replay_batch_size
+        self.update_freq_ratio = update_freq_ratio
+        self.n_simuls = n_simuls
+        self.seed = seed
+
+        self.replay_memory = ExperienceReplay(self.env, self.device, self.buffer_size, self.min_replay_size, seed = self.seed)
         self.online_network = DQN(self.env, self.learning_rate).to(self.device)
         
-        '''
-        ToDo: Add here a target network and set the parameter values to the ones of the online network!
-        Hint: Use the method 'load_state_dict'!
-        '''
         
         #Solution:
         self.target_network = DQN(self.env, self.learning_rate).to(self.device)
         self.target_network.load_state_dict(self.online_network.state_dict())
+
+        #seeding random number generator for sampling
+        self.seed = seed
+        random.seed(self.seed)
         
-    def choose_action(self, step, observation, greedy = False):
+    def choose_action(self, step:int, observation, greedy = False) -> tuple:
         
         '''
         Params:
@@ -179,7 +188,7 @@ class DDQNAgent:
         '''
         
         epsilon = np.interp(step, [0, self.epsilon_decay], [self.epsilon_start, self.epsilon_end])
-    
+
         random_sample = random.random()
     
         if (random_sample <= epsilon) and not greedy:
@@ -197,7 +206,8 @@ class DDQNAgent:
         return action, epsilon
     
     
-    def return_q_value(self, observation):
+    def return_q_value(self, observation) -> float:
+        
         '''
         Params:
         observation = input value of the state the agent is in
@@ -212,14 +222,9 @@ class DDQNAgent:
         
         return torch.max(q_values).item()
         
-    def learn(self, batch_size):
+    def learn(self) -> None:
         
-        '''
-        Params:
-        batch_size = number of transitions that will be sampled
-        '''
-        
-        observations_t, actions_t, rewards_t, dones_t, new_observations_t = self.replay_memory.sample(batch_size)
+        observations_t, actions_t, rewards_t, dones_t, new_observations_t = self.replay_memory.sample(self.replay_batch_size)
 
         #Compute targets, note that we use the same neural network to do both! This will be changed later!
 
@@ -246,7 +251,7 @@ class DDQNAgent:
         loss.backward()
         self.online_network.optimizer.step()
         
-    def update_target_network(self):
+    def update_target_network(self) -> None:
         
         '''
         ToDO: 
@@ -258,28 +263,88 @@ class DDQNAgent:
         
         self.target_network.load_state_dict(self.online_network.state_dict())
     
-    '''
-    The following method will let the DQNAgent play the game after it has worked 
-    through the number of episodes for training
-    '''
-    def play_game(self, step=1, seed=123):
+
+    def train_agent(self) -> list:
+        '''
+        Returns:
+        average_reward_list = a list of averaged rewards over 100 episodes of playing the game
+        '''
+        obs, _ = self.env.reset()
+        average_reward_list = [-34000]
+        episode_reward = 0.0
         
+        steps_per_simul = self.env.state_space.shape[0]-1
+        max_steps = self.n_simuls * steps_per_simul
+        update_freq = int(steps_per_simul*self.update_freq_ratio)
+
+        print(f"Update frequency : {update_freq}")
+
+        for step in range(max_steps):
+            
+            action, epsilon = self.choose_action(step, obs)
+        
+            new_obs, rew, terminated, truncated, _ = self.env.step(action,obs[0])
+            done = terminated or truncated        
+            transition = (obs, action, rew, done, new_obs)
+            self.replay_memory.add_data(transition)
+            obs = new_obs
+        
+            episode_reward += rew
+        
+            if done:
+            
+                obs, _ = self.env.reset()
+                self.replay_memory.add_reward(episode_reward)
+                print(f'Buffer state : {self.replay_memory.reward_buffer}')
+                #Reinitilize the reward to 0.0 after the game is over
+                episode_reward = 0.0
+
+            #Learn
+
+            self.learn()
+
+            #Calculate after each 100 episodes an average that will be added to the list
+                    
+            if (step) % update_freq == 0:
+                
+                average_reward_list.append(np.mean(self.replay_memory.reward_buffer))
+
+            #update target network    
+            if step % update_freq == 0:
+                self.update_target_network()
+        
+            #Print some output
+            if (step+1) % 1000 == 0:
+                print(20*'--')
+                print('Step', step)
+                print('Epsilon', epsilon)
+                print('Avg Rew', np.mean(self.replay_memory.reward_buffer))
+                print()
+
+        return average_reward_list        
+
+
+    def validate(self) -> None:
+    
         '''
         Params:
         step = the number of the step within the epsilon decay that is used for the epsilon value of epsilon-greedy
         seed = seed for random number generator for reproducibility
         '''
+        
+        print("Fudging implement this!")
+        return None
         #Get the optimized strategy:
         done = False
         #Start the game
         state, _ = self.env.reset()
         while not done:
             #Pick the best action 
-            action = self.choose_action(step, state, True)[0]
+            action = self.choose_action(None, state, True)[0]
             next_state, rew, terminated, truncated, _ = self.env.step(action)
             done = terminated or truncated 
             state = next_state
 
 
-    
-    
+
+

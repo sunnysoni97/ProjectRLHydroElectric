@@ -6,7 +6,7 @@ class DamAgent(gym.Env):
     
     base_action_list = ['do_nothing','sell','buy']
 
-    def __init__(self, data: np.ndarray, base_vol:int=1e5, base_height:int=30, is_tabular:bool=False) -> None:
+    def __init__(self, data: np.ndarray, base_vol:int=1e5, base_height:int=30, is_tabular:bool=False, seed:int=None) -> None:
         
         #Configuring agent for tabular(discrete) or continous learning
         self.is_tabular = is_tabular
@@ -36,16 +36,16 @@ class DamAgent(gym.Env):
         #Filling state space with the data
         
         if(self.is_tabular):
-            self.state_space =np.concatenate((data, np.zeros((data.shape[0], 1)), np.zeros((data.shape[0], 1))), axis=1)
+            self.state_space =np.concatenate((data, np.full((data.shape[0], 1),fill_value=5), np.full((data.shape[0], 1),fill_value=self.base_vol/2)), axis=1)
         else:
-            self.state_space =np.concatenate((data, np.zeros((data.shape[0], 1))), axis=1)
-        
-        self.state_space[0][-1] = self.base_vol/2
-        if(self.is_tabular):
-            self.state_space[0][-2] = self.__discretize_vol(self.state_space[0][-1])
+            self.state_space =np.concatenate((data, np.full((data.shape[0], 1),fill_value=base_vol/2)), axis=1)
         
         #initialising base state
         
+        self.seed = seed
+        super().reset(seed=self.seed)
+        np.random.seed(self.seed)
+
         self.reset()
         
         print("Environment initialised.")
@@ -63,12 +63,17 @@ class DamAgent(gym.Env):
         return {'state':self.state, 'clock':self.clock}
 
     def reset(self, do_random:bool=False) -> tuple:
+        
         if(do_random):
             self.clock = np.random.randint(low=0,high=self.state_space.shape[0]+1)
         else:
             self.clock = 0
         
         self.state=self.state_space[self.clock]
+        self.state[-1] = self.base_vol/2
+
+        if(self.is_tabular):
+            self.state[-2] = self.__discretize_vol(self.state[-1])
         return (self.__get_obs(), self.__get_info())
 
     def __convert_action_to_text(self,action:int) -> str:
