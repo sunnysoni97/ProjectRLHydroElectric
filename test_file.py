@@ -5,7 +5,7 @@ from DDQN_Agent import DDQNAgent
 import torch
 
 if __name__ == "__main__":
-    with open('data/train_data/train_discrete.npy','rb') as f:
+    with open('data/train_data/train_big.npy','rb') as f:
         ary = np.load(f) 
     agent = Agent_Final.DamAgent(ary,is_tabular=False,seed=123)
     print("current state : ")
