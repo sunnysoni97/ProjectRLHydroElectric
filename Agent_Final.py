@@ -23,17 +23,18 @@ class DamAgent(gym.Env):
         if(self.is_tabular):
             low_range = np.full(shape=(data.shape[1]-1),fill_value=np.min(data[:,:-1],axis=0))
             high_range = np.full(shape=(data.shape[1]-1),fill_value=np.max(data[:,:-1],axis=0))
-            low_range = np.concatenate([low_range,[1]])
+            low_range = np.concatenate([low_range,[0]])
             high_range = np.concatenate([high_range,[10]])
             self.observation_space = spaces.Box(low=low_range, high=high_range, dtype=np.int32)
 
         else:
             low_range = np.full(shape=(data.shape[1]),fill_value=-np.inf)
             high_range = np.full(shape=(data.shape[1]),fill_value=np.inf)
-            # high_range = np.concatenate([high_range,[self.base_vol]])
             self.observation_space = spaces.Box(low=low_range, high= high_range, dtype=np.float32)
         
         #Filling state space with the data
+        
+        print(data.shape)
         
         if(self.is_tabular):
             self.state_space =np.concatenate((data[:,:-1], np.full((data.shape[0], 1),fill_value=5), np.full((data.shape[0], 1),fill_value=self.base_vol/2)), axis=1)
@@ -42,6 +43,7 @@ class DamAgent(gym.Env):
         
         #filling prices for reward generation
 
+        print(self.state_space.shape)
         self.prices = data[:,-1]
 
         #initialising base state
@@ -69,12 +71,12 @@ class DamAgent(gym.Env):
         return self.state[:-1]
     
     def __get_info(self) -> dict:
-        return {'cur_state':self.state[:-1], 'vol_lvl':self.state[-1],'clock':self.clock}
+        return {'cur_state':self.state[:-1], 'cur_price':self.price,'vol_lvl':self.state[-1],'clock':self.clock}
 
     def reset(self, do_random:bool=False) -> tuple:
         
         if(do_random):
-            self.clock = np.random.randint(low=0,high=self.state_space.shape[0]+1)
+            self.clock = np.random.randint(low=0,high=self.state_space.shape[0])
         else:
             self.clock = 0
         
@@ -95,20 +97,22 @@ class DamAgent(gym.Env):
         
         max_delta = 5*3600
         
+        cur_water_lvl = self.__get_info()['vol_lvl']
+        
         if(bool_buy):
             eff_factor = 0.8
             max_delta *= eff_factor
 
-            if(self.__get_obs()[-1]+max_delta > self.base_vol):
-                delta = self.base_vol - self.__get_obs()[-1]
+            if(cur_water_lvl+max_delta > self.base_vol):
+                delta = self.base_vol - cur_water_lvl
             else:
                 delta = max_delta
 
         else:
             eff_factor = 0.9
             
-            if(self.__get_obs()[-1]-max_delta < 0):
-                delta = -self.__get_obs()[-1]
+            if(cur_water_lvl-max_delta < 0):
+                delta = -cur_water_lvl
             else:
                 delta = -max_delta
 
@@ -122,11 +126,12 @@ class DamAgent(gym.Env):
             reward = -pot_energy * mkt_price
         else:
             reward = -pot_energy * self.price
-        curr_water_level = self.__get_obs()[-1]
+        
+        # curr_water_level = self.__get_obs()[-1]
         self.clock += 1
         self.price = self.prices[self.clock]
         self.state = self.state_space[self.clock]
-        self.state[-1] = curr_water_level + delta
+        self.state[-1] = cur_water_lvl + delta
         if(self.is_tabular):
             self.state[-2] = self.__discretize_vol(self.state[-1])
         else:
