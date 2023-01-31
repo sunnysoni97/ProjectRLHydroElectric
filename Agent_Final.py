@@ -21,25 +21,29 @@ class DamAgent(gym.Env):
         #Declaring observation space with the the data we have
     
         if(self.is_tabular):
-            low_range = np.full(shape=(data.shape[1]),fill_value=np.min(data,axis=0))
-            high_range = np.full(shape=(data.shape[1]),fill_value=np.max(data,axis=0))
+            low_range = np.full(shape=(data.shape[1]-1),fill_value=np.min(data[:,:-1],axis=0))
+            high_range = np.full(shape=(data.shape[1]-1),fill_value=np.max(data[:,:-1],axis=0))
             low_range = np.concatenate([low_range,[1]])
             high_range = np.concatenate([high_range,[10]])
             self.observation_space = spaces.Box(low=low_range, high=high_range, dtype=np.int32)
 
         else:
-            low_range = np.zeros(shape=(data.shape[1]+1))
+            low_range = np.full(shape=(data.shape[1]),fill_value=-np.inf)
             high_range = np.full(shape=(data.shape[1]),fill_value=np.inf)
-            high_range = np.concatenate([high_range,[self.base_vol]])
+            # high_range = np.concatenate([high_range,[self.base_vol]])
             self.observation_space = spaces.Box(low=low_range, high= high_range, dtype=np.float32)
         
         #Filling state space with the data
         
         if(self.is_tabular):
-            self.state_space =np.concatenate((data, np.full((data.shape[0], 1),fill_value=5), np.full((data.shape[0], 1),fill_value=self.base_vol/2)), axis=1)
+            self.state_space =np.concatenate((data[:,:-1], np.full((data.shape[0], 1),fill_value=5), np.full((data.shape[0], 1),fill_value=self.base_vol/2)), axis=1)
         else:
-            self.state_space =np.concatenate((data, np.full((data.shape[0], 1),fill_value=base_vol/2)), axis=1)
+            self.state_space =np.concatenate((data[:,:-1], np.full((data.shape[0], 1),fill_value=0), np.full((data.shape[0], 1),fill_value=self.base_vol/2)), axis=1)
         
+        #filling prices for reward generation
+
+        self.prices = data[:,-1]
+
         #initialising base state
         
         self.seed = seed
@@ -48,19 +52,24 @@ class DamAgent(gym.Env):
 
         self.reset()
         
+        print(f"Initial state = {self.__get_obs()}")
         print("Environment initialised.")
         return
 
     def __discretize_vol(self, vol:int) -> int:
         out_vol = np.floor(vol/1e4).astype(int)
         return out_vol
+
+    def __normalize_vol(self,vol:int) -> float:
+        out_vol = float((vol-5e4)/5e4)
+        return out_vol
     
     def __get_obs(self) -> int:
         self.state = self.state_space[self.clock]
-        return self.state
+        return self.state[:-1]
     
     def __get_info(self) -> dict:
-        return {'state':self.state, 'clock':self.clock}
+        return {'cur_state':self.state[:-1], 'vol_lvl':self.state[-1],'clock':self.clock}
 
     def reset(self, do_random:bool=False) -> tuple:
         
@@ -71,15 +80,18 @@ class DamAgent(gym.Env):
         
         self.state=self.state_space[self.clock]
         self.state[-1] = self.base_vol/2
+        self.price = self.prices[self.clock]
 
         if(self.is_tabular):
             self.state[-2] = self.__discretize_vol(self.state[-1])
+        else:
+            self.state[-2] = self.__normalize_vol(self.state[-1])
         return (self.__get_obs(), self.__get_info())
 
     def __convert_action_to_text(self,action:int) -> str:
         return self.base_action_list[action]    
     
-    def __generate_reward(self, bool_buy:bool, market_price:float) -> float:
+    def __generate_reward(self, bool_buy:bool,mkt_price:float=0.0) -> float:
         
         max_delta = 5*3600
         
@@ -106,17 +118,23 @@ class DamAgent(gym.Env):
             pot_energy = 1000*eff_factor*delta*9.81*self.base_height
         
         pot_energy /= 3.6e9
-        reward = -pot_energy * market_price
+        if(self.is_tabular):
+            reward = -pot_energy * mkt_price
+        else:
+            reward = -pot_energy * self.price
         curr_water_level = self.__get_obs()[-1]
         self.clock += 1
+        self.price = self.prices[self.clock]
         self.state = self.state_space[self.clock]
         self.state[-1] = curr_water_level + delta
         if(self.is_tabular):
             self.state[-2] = self.__discretize_vol(self.state[-1])
+        else:
+            self.state[-2] = self.__normalize_vol(self.state[-1])
         
         return reward
     
-    def step(self,action:int, market_price:float) -> tuple:
+    def step(self,action:int,mkt_price:float=0.0) -> tuple:
         if (not self.action_space.contains(action)):
             raise AssertionError("Invalid action value for agent step.")
         
@@ -124,18 +142,27 @@ class DamAgent(gym.Env):
             action_string = self.__convert_action_to_text(action)
 
             if(action_string == 'sell'):   
-                reward = self.__generate_reward(bool_buy=False,market_price=market_price)
+                if(self.is_tabular):
+                    reward = self.__generate_reward(bool_buy=False,mkt_price=mkt_price)
+                else:
+                    reward = self.__generate_reward(bool_buy=False)
             
             elif(action_string == 'buy'):  
-                reward = self.__generate_reward(bool_buy=True, market_price=market_price)
+                if(self.is_tabular):
+                    reward = self.__generate_reward(bool_buy=True,mkt_price=mkt_price)
+                else:
+                    reward = self.__generate_reward(bool_buy=True)
 
             else:
                 reward = 0
                 self.clock += 1
                 self.state = self.state_space[self.clock]
+                self.price = self.prices[self.clock]
                 self.state[-1] = self.state_space[self.clock-1][-1]
                 if(self.is_tabular):
-                    self.state[-2] = self.__discretize_vol(self.state[-1])
+                    self.state[-2] = self.__discretize_vol(self.state[-1]) 
+                else:
+                    self.state[-2] = self.__normalize_vol(self.state[-1])
 
             terminated = False
 

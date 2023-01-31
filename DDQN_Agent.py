@@ -74,7 +74,7 @@ class ExperienceReplay:
         for _ in range(self.min_replay_size):
             
             action = env.action_space.sample()
-            new_obs, rew, terminated, truncated, _ = env.step(action,obs[0])
+            new_obs, rew, terminated, truncated, _ = self.env.step(action)
             done = terminated or truncated
 
             transition = (obs, action, rew, done, new_obs)
@@ -142,12 +142,12 @@ class ExperienceReplay:
         
 class DDQNAgent:
     
-    def __init__(self, env, device, val_env:np.array=None, 
+    def __init__(self, train_env, device, val_env=None, 
                  epsilon_decay:int=int(2e4), epsilon_start:float=1.0, epsilon_end:float=0.05, discount_rate:float=0.99, lr:float=5e-4, 
                  buffer_size:int=int(1e5), min_replay_size:int=int(1e4), replay_batch_size:int=168, update_freq_ratio:float=0.01, 
                  n_simuls:int=100, seed:int = None) -> None:
       
-        self.env = env
+        self.env = train_env
         self.val_env = val_env
         self.device = device
         self.epsilon_decay = epsilon_decay
@@ -220,6 +220,7 @@ class DDQNAgent:
         obs_t = torch.as_tensor(observation, dtype = torch.float32, device=self.device)
         q_values = self.online_network(obs_t.unsqueeze(0))
         
+        print(q_values)
         return torch.max(q_values).item()
         
     def learn(self) -> None:
@@ -231,6 +232,9 @@ class DDQNAgent:
         target_q_values = self.target_network(new_observations_t)
         max_target_q_values = target_q_values.max(dim=1, keepdim=True)[0]
 
+        #scaling rewards to small values
+        rewards_t = rewards_t/100
+        
         targets = rewards_t + self.discount_rate * (1-dones_t) * max_target_q_values
 
         #Compute loss
@@ -269,7 +273,7 @@ class DDQNAgent:
         Returns:
         average_reward_list = a list of averaged rewards over 100 episodes of playing the game
         '''
-        obs, _ = self.env.reset()
+        obs, _ = self.env.reset(do_random=True)
         average_reward_list = [-34000]
         episode_reward = 0.0
         
@@ -283,7 +287,7 @@ class DDQNAgent:
             
             action, epsilon = self.choose_action(step, obs)
         
-            new_obs, rew, terminated, truncated, _ = self.env.step(action,obs[0])
+            new_obs, rew, terminated, truncated, _ = self.env.step(action)
             done = terminated or truncated        
             transition = (obs, action, rew, done, new_obs)
             self.replay_memory.add_data(transition)
@@ -293,9 +297,10 @@ class DDQNAgent:
         
             if done:
             
-                obs, _ = self.env.reset()
+                obs, _ = self.env.reset(do_random=True)
                 self.replay_memory.add_reward(episode_reward)
                 print(f'Buffer state : {self.replay_memory.reward_buffer}')
+                self.validate()
                 #Reinitilize the reward to 0.0 after the game is over
                 episode_reward = 0.0
 
@@ -321,30 +326,28 @@ class DDQNAgent:
                 print('Avg Rew', np.mean(self.replay_memory.reward_buffer))
                 print()
 
+            #print some q values
+            # if(step%50) == 0:
+            #     print(f'Q value : {self.return_q_value(obs)}')
+
         return average_reward_list        
 
 
     def validate(self) -> None:
-    
-        '''
-        Params:
-        step = the number of the step within the epsilon decay that is used for the epsilon value of epsilon-greedy
-        seed = seed for random number generator for reproducibility
-        '''
-        
-        print("Fudging implement this!")
-        return None
-        #Get the optimized strategy:
+            
+        state,_ = self.val_env.reset()
+        episode_rew = 0
+
         done = False
-        #Start the game
-        state, _ = self.env.reset()
-        while not done:
-            #Pick the best action 
+        while(not done):
             action = self.choose_action(None, state, True)[0]
-            next_state, rew, terminated, truncated, _ = self.env.step(action)
+            next_state, rew, terminated, truncated, _ = self.val_env.step(action)
+            episode_rew += rew
             done = terminated or truncated 
             state = next_state
 
+        print(f"Validation reward = {episode_rew}")
+        
 
 
 
