@@ -1,29 +1,35 @@
-from Agent import DamAgent
+from Agent_Final import DamAgent
 import numpy as np
-
+from preprocess import Preprocess_Tabular
+import os
 
 if __name__ == "__main__":
 
-    with open('./data/train_data/train.npy', 'rb') as f:
-        training_data = np.load(f)
+    PP = Preprocess_Tabular()
+    
+    #ASSUMING validate.xlsx has the same structure(not data values) as provided to students,
+    #otherwise might break
 
-    env = DamAgent(data=training_data)
+    PP.preprocess_discrete('validate.xlsx',is_validate=True)
+
+    val_data_path = os.path.join(os.path.dirname(__file__),'data/val_data/val_discrete.npy')
+
+    with open(val_data_path, 'rb') as f:
+        val_data = np.load(f)
+
+    env = DamAgent(data=val_data)
     
     episode_reward = 0
 
     for i in range(env.state_space.shape[0]):
         
         action = env.action_space.sample()
-        mkt_price = env.state[0] # 1st element in state (price)
-        obs,reward,_,_,info = env.step(action,mkt_price)
+        obs,reward,_,_,info = env.step(action)
         
         episode_reward += reward
 
         if i % 5000 ==0:
-            print("--"*20)
-            print(f"Step {info['clock']}/{env.state_space.shape[0]}: Price: {mkt_price}, Action : {env.base_action_list[action]}, Vol lvl (after action): {obs[-1]}, Reward for that fookin choice: {reward}")
+            print(f"Step number : {i+1}")
             print(f"Total reward so far: {round(episode_reward, 2)}$")
-        # if i == 20:
-        #     break
-    print()
+    
     print(f'Total reward of the episode : {round(episode_reward, 2)}$ (Big Benjis)')
