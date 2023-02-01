@@ -9,6 +9,7 @@ from Agent_Final import DamAgent
 from preprocess import Preprocess_Continous
 import pickle
 import os
+import pandas as pd
 
 class DQN(nn.Module):
     
@@ -162,6 +163,10 @@ class DDQNAgent:
 
         self.learning_rate = lr
 
+        self.epsilon_decay = epsilon_decay
+        self.epsilon_start = epsilon_start
+        self.epsilon_end = epsilon_end
+
         if(mode=='train'):
             
             #Preprocessing data for training and validation
@@ -190,13 +195,12 @@ class DDQNAgent:
 
             train_env = DamAgent(train_ary,seed=seed)
             val_env = DamAgent(val_ary,seed=seed)
+            val_train_env = DamAgent(train_ary,seed=seed)
+
 
             self.env = train_env
             self.val_env = val_env
-
-            self.epsilon_decay = epsilon_decay
-            self.epsilon_start = epsilon_start
-            self.epsilon_end = epsilon_end
+            self.val_train_env = val_train_env
 
             self.discount_rate = discount_rate
             
@@ -218,7 +222,18 @@ class DDQNAgent:
             self.target_network.load_state_dict(self.online_network.state_dict())
 
         elif(mode=='validate_custom'):
-            pass
+            feature_set = 'big' if dataset_big else 'small'
+            
+            with open(os.path.join(data_base_path,f'val_data/val_{feature_set}.npy'),'rb') as f:
+                val_ary = np.load(f)
+
+            val_env = DamAgent(val_ary,seed=seed)
+
+            self.val_env = val_env
+            
+            self.online_network = DQN(self.val_env, self.learning_rate).to(self.device)
+            self.load_network_from_disk()
+            
         elif(mode=='validate_standard'):
             pass
         else:
@@ -319,14 +334,19 @@ class DDQNAgent:
         self.target_network.load_state_dict(self.online_network.state_dict())
     
 
-    def train_agent(self) -> list:
+    def train_agent(self) -> tuple:
         '''
         Returns:
         average_reward_list = a list of averaged rewards over 100 episodes of playing the game
         '''
         obs, _ = self.env.reset(do_random=False)
-        average_reward_list = [-34000]
+        
+        reward_list_train = []
+        reward_list_val = []
+        step_list = []
         episode_reward = 0.0
+
+        best_val_score = -np.inf
         
         steps_per_simul = self.env.state_space.shape[0]-1
         max_steps = self.n_simuls * steps_per_simul
@@ -351,7 +371,8 @@ class DDQNAgent:
                 obs, _ = self.env.reset(do_random=False)
                 self.replay_memory.add_reward(episode_reward)
                 print(f'Buffer state : {self.replay_memory.reward_buffer}')
-                self.validate()
+                print(f'Last Train Score : {reward_list_train[-1]}')
+                print(f'Last Validate Score : {reward_list_val[-1]}')
                 #Reinitilize the reward to 0.0 after the game is over
                 episode_reward = 0.0
 
@@ -361,9 +382,18 @@ class DDQNAgent:
 
             #Calculate after each 100 episodes an average that will be added to the list
                     
-            if (step) % update_freq == 0:
-                
-                average_reward_list.append(np.mean(self.replay_memory.reward_buffer))
+            if (step+1) % 2500 == 0:
+                reward_train,_,_ = self.validate(is_train=True)
+                reward_val,_,_ = self.validate()
+
+                if(reward_val>best_val_score):
+                    print(f"Best validation score : {reward_val}")
+                    self.save_network_to_disk()
+                    best_val_score=reward_val
+
+                reward_list_train.append(reward_train)
+                reward_list_val.append(reward_val)
+                step_list.append(step+1)
 
             #update target network    
             if step % update_freq == 0:
@@ -373,31 +403,58 @@ class DDQNAgent:
             if (step+1) % 1000 == 0:
                 print(20*'--')
                 print('Step', step)
-                print('Epsilon', epsilon)
                 print('Avg Rew', np.mean(self.replay_memory.reward_buffer))
-                print()
-
-            #print some q values
-            # if(step%50) == 0:
-            #     print(f'Q value : {self.return_q_value(obs)}')
-
-        return average_reward_list        
 
 
-    def validate(self) -> None:
+        df_dict = {'train_reward':reward_list_train,'val_reward':reward_list_val,'step':step_list}
+        df = pd.DataFrame(data=df_dict)
+        df.to_csv(os.path.join(self.model_base_path,'train_val_rewards.csv'),index=False)
+
+        return reward_list_train,reward_list_val 
+
+
+    def validate(self,is_train:bool=False) -> tuple:
             
-        state,_ = self.val_env.reset()
+        if(is_train):
+            state,info = self.val_train_env.reset()
+        else:
+            state,info = self.val_env.reset()
+        
         episode_rew = 0
+        rewards_at_steps = []
+        actions_at_steps = []
+        cur_price = info['cur_price']
 
         done = False
         while(not done):
             action = self.choose_action(None, state, True)[0]
-            next_state, rew, terminated, truncated, _ = self.val_env.step(action)
+            
+            if(is_train):
+                next_state, rew, terminated, truncated, info = self.val_train_env.step(action)
+            else:
+                next_state, rew, terminated, truncated, info = self.val_env.step(action)
+            
             episode_rew += rew
+            rewards_at_steps.append(rew)
+            
+            cur_action = rew/cur_price
+            actions_at_steps.append(cur_action)
+            
             done = terminated or truncated 
+            if(not done):
+                cur_price = info['cur_price']
             state = next_state
 
-        print(f"Validation reward = {episode_rew}")
+        return episode_rew, rewards_at_steps, actions_at_steps
+
+    def validate_best(self) -> float:
+        total_rew, reward_list, action_list = self.validate()
+        
+        df_dict = {'reward':reward_list,'action':action_list,'step':[x for x in range(len(reward_list))]}
+        df = pd.DataFrame(data=df_dict)
+        df.to_csv(os.path.join(self.model_base_path,'cummulative_rewards.csv'),index=False)
+
+        return total_rew
     
     def save_network_to_disk(self) -> None:
         with open(os.path.join(self.model_base_path,'best_online_net.bin'),'wb') as f:
