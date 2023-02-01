@@ -148,7 +148,7 @@ class ExperienceReplay:
 
 class DDQNAgent:
     
-    def __init__(self, mode:str='validate_custom', dataset_big:bool=True, train_file_path:str='train.xlsx', val_file_path:str='validate.xlsx', device:str='cpu', 
+    def __init__(self, mode:str='validate_custom', dataset_big:bool=False, train_file_path:str='train.xlsx', val_file_path:str='validate.xlsx', device:str='cpu', 
                  epsilon_decay:int=int(2e4), epsilon_start:float=1.0, epsilon_end:float=0.05, discount_rate:float=0.99, lr:float=5e-4, 
                  buffer_size:int=int(2e4), min_replay_size:int=int(1e4), replay_batch_size:int=100, update_freq_ratio:float=0.015, 
                  n_simuls:int=5, seed:int = None) -> None:
@@ -286,7 +286,6 @@ class DDQNAgent:
         obs_t = torch.as_tensor(observation, dtype = torch.float32, device=self.device)
         q_values = self.online_network(obs_t.unsqueeze(0))
         
-        print(q_values)
         return torch.max(q_values).item()
         
     def learn(self) -> None:
