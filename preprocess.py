@@ -54,7 +54,6 @@ class Common_Functions():
 class Preprocess_Tabular():
     def __init__(self) -> None:
         print("Tabular preprocessor initialised...")
-        return
 
     def discretize_col(self,in_df:pd.DataFrame,col_name:str,n_bins:int,band_length:float) -> pd.DataFrame:
         out_df = in_df.copy()
@@ -75,7 +74,7 @@ class Preprocess_Tabular():
             out_df = self.discretize_col(out_df,'price',15,10)
         return out_df[['price','hour','month','price_nondiscrete']]
 
-    def preprocess_discrete(self, file_path, is_validate:bool=False) -> None:
+    def preprocess_discrete(self, file_path:str, is_validate:bool=False) -> None:
         
         df = pd.read_excel(file_path)
         base_path = os.path.join(os.path.dirname(__file__),'data')
@@ -97,11 +96,10 @@ class Preprocess_Tabular():
 
 
 class Preprocess_Continous():
-    def __init__(self, reduced_form:bool=False) -> None:
+    def __init__(self) -> None:
         print("Continous preprocessor initialised...")
-        pass
     
-    def normalize_train(self,df):
+    def normalize_train(self,df:pd.DataFrame) -> tuple:
         x = df.copy()
         #returns df with all columns normalized individually z-score
         #DANGER - DATA LEAKAGE
@@ -114,7 +112,7 @@ class Preprocess_Continous():
 
         return x, u
 
-    def normalize_validation(self, df, u):
+    def normalize_validation(self, df:pd.DataFrame, u:dict) -> pd.DataFrame:
         x = df.copy()
         #returns df with all columns normalized individually z-score
         #DANGER - DATA LEAKAGE
@@ -126,7 +124,7 @@ class Preprocess_Continous():
 
         return x
 
-    def bollinger_bands(self, df, hours):
+    def bollinger_bands(self, df:pd.DataFrame, hours:int) -> pd.DataFrame:
         out = df.copy()
         rolled_mean = out['price'].rolling(hours).mean() 
         rolled_mean.reset_index(inplace=True, drop=True)
@@ -151,13 +149,13 @@ class Preprocess_Continous():
 
         return out
 
-    def get_ema(self, df, period_length:int):
+    def get_ema(self, df:pd.DataFrame, period_length:int) -> pd.DataFrame:
         #returns a new df, which contains new column
         x = df.copy()
         x[f'{period_length}h / {int(period_length/24)}day EMA'] = x['price'].ewm(span=period_length).mean()
         return x
 
-    def get_atr(self, df, period:int):
+    def get_atr(self, df:pd.DataFrame, period:int) -> pd.DataFrame:
         x = df.copy()
         maxes = (x.groupby(['date']).max()['price'])
         mins = (x.groupby(['date']).min()['price'])
@@ -189,7 +187,7 @@ class Preprocess_Continous():
         x[f'{period*24}h / {int(period)}day ATR'] = a_tr
         return x
 
-    def stochastic_osc(self, df, hours, smoothing):
+    def stochastic_osc(self, df:pd.DataFrame, hours:int, smoothing:bool) -> pd.DataFrame:
         out = df.copy()
         maxes = out['price'].rolling(hours).max()
         mins = out['price'].rolling(hours).min()
@@ -206,7 +204,7 @@ class Preprocess_Continous():
             out[f'{hours}h / {int(hours/24)}smoothed oscillator'] = osc_smoothed
         return out  
 
-    def build_big(self,data_f):
+    def build_big(self,data_f:pd.DataFrame) -> pd.DataFrame:
         df = data_f.copy()
         df = Common_Functions.dataformatting(df)
         
@@ -237,7 +235,7 @@ class Preprocess_Continous():
 
         return df
 
-    def preprocess_big(self, file_path, is_validate:bool=False, columns_to_select:list=[], train_values:dict={},small_path:bool=False) -> dict:
+    def preprocess_big(self, file_path:str, is_validate:bool=False, columns_to_select:list=[], train_values:dict={},small_path:bool=False) -> dict:
         
         
         df = pd.read_excel(file_path)
