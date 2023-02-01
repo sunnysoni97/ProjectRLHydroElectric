@@ -133,7 +133,7 @@ class DamAgent(gym.Env):
         
         return reward
     
-    def step(self,action:int,mkt_price:float=0.0) -> tuple:
+    def step(self,action:int) -> tuple:
         if (not self.action_space.contains(action)):
             raise AssertionError("Invalid action value for agent step.")
         
