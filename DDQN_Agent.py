@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from collections import deque
 import random
 from Agent_Final import DamAgent
-from preprocess import Preprocess_Continous
+from preprocess import Preprocess_Continous, preprocess_standard_observation
 import pickle
 import os
 import pandas as pd
@@ -235,11 +235,40 @@ class DDQNAgent:
             self.load_network_from_disk()
             
         elif(mode=='validate_standard'):
-            pass
+            
+            self.model_base_path = os.path.join(os.path.dirname(__file__))
+            
+            preprocess_dict_path = os.path.join(os.path.dirname(__file__),'train_mean_std.bin')
+            #if(not os.path.exists(preprocess_dict_path)):
+            #    raise IOError("Preprocessing value dictionary not present in the folder!!!")
+
+            with open(preprocess_dict_path,'rb') as f:
+                self.pp_values_dict = pickle.load(f)
+            
+            random_data = np.zeros((10,4))
+
+            val_env = DamAgent(random_data)
+
+            self.online_network = DQN(val_env, self.learning_rate).to(self.device)
+            self.load_network_from_disk()
+
         else:
             raise ValueError("Invalid Mode for initialising DDQN agent!!!")
             
         
+    def act(self,obs_standard) -> float:
+        new_obs = preprocess_standard_observation(obs=obs_standard,pp_values_dict=self.pp_values_dict)
+        action_index,_ = self.choose_action(None,new_obs,True)
+        if(action_index == 1):
+            out_action = -1.0
+        elif(action_index == 2):
+            out_action = 1.0
+        else:
+            out_action = 0.0
+        
+        return out_action
+    
+    
     def choose_action(self, step:int, observation, greedy = False) -> tuple:
         
         '''

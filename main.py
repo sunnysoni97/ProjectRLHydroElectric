@@ -1,6 +1,8 @@
 from TestEnv import HydroElectric_Test
 import argparse
 import matplotlib.pyplot as plt
+from DDQN_Agent import DDQNAgent
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--excel_file', type=str, default='validate.xlsx') # Path to the excel file with the test data
@@ -10,12 +12,14 @@ env = HydroElectric_Test(path_to_test_data=args.excel_file)
 total_reward = []
 cumulative_reward = []
 
+RL_agent = DDQNAgent(mode='validate_standard')
+
 observation = env.observation()
 for i in range(730*24 -1): # Loop through 2 years -> 730 days * 24 hours
     # Choose a random action between -1 (full capacity sell) and 1 (full capacity pump)
-    action = env.continuous_action_space.sample()
+    # action = env.continuous_action_space.sample()
     # Or choose an action based on the observation using your RL agent!:
-    # action = RL_agent.act(observation)
+    action = RL_agent.act(observation)
     # The observation is the tuple: [volume, price, hour_of_day, day_of_week, day_of_year, month_of_year, year]
     next_observation, reward, terminated, truncated, info = env.step(action)
     total_reward.append(reward)

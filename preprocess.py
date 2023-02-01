@@ -279,3 +279,19 @@ class Preprocess_Continous():
         out = self.preprocess_big(file_path,is_validate,columns_to_select,train_values,small_path=True)
         return out,columns_to_select
 
+def preprocess_standard_observation(obs:np.ndarray,pp_values_dict:dict) -> np.ndarray:
+    #creating obs to feed into nn
+    new_obs = np.zeros(4)
+    
+    #using mean and std values from pretrained data dict
+
+    new_obs[0] = (obs[1]-pp_values_dict['price'][0])/pp_values_dict['price'][1]
+    new_obs[1] = (obs[2]-pp_values_dict['hour'][0])/pp_values_dict['hour'][1]
+    new_obs[2] = (obs[5]-pp_values_dict['month'][0])/pp_values_dict['month'][1]
+
+    #normalising volume same as training agent
+
+    new_obs[3] = float((obs[0]-5e4)/5e4)
+
+    return new_obs
+    
