@@ -5,6 +5,10 @@ import torch.optim as optim
 import torch.nn.functional as F
 from collections import deque
 import random
+from Agent_Final import DamAgent
+from preprocess import Preprocess_Continous
+import pickle
+import os
 
 class DQN(nn.Module):
     
@@ -140,39 +144,86 @@ class ExperienceReplay:
 
         self.reward_buffer.append(reward)
         
+
 class DDQNAgent:
     
-    def __init__(self, train_env, device, val_env=None, 
+    def __init__(self, mode:str='validate_custom', dataset_big:bool=True, train_file_path:str='train.xlsx', val_file_path:str='validate.xlsx', device:str='cpu', 
                  epsilon_decay:int=int(2e4), epsilon_start:float=1.0, epsilon_end:float=0.05, discount_rate:float=0.99, lr:float=5e-4, 
-                 buffer_size:int=int(1e5), min_replay_size:int=int(1e4), replay_batch_size:int=168, update_freq_ratio:float=0.01, 
-                 n_simuls:int=100, seed:int = None) -> None:
+                 buffer_size:int=int(2e4), min_replay_size:int=int(1e4), replay_batch_size:int=100, update_freq_ratio:float=0.015, 
+                 n_simuls:int=5, seed:int = None) -> None:
       
-        self.env = train_env
-        self.val_env = val_env
+        model_base_path = os.path.join(os.path.dirname(__file__),'model/ddqn/')
+        if(not os.path.exists(model_base_path)):
+            os.makedirs(model_base_path)
+        
+        data_base_path = os.path.join(os.path.dirname(__file__),'data/')
+
         self.device = device
-        self.epsilon_decay = epsilon_decay
-        self.epsilon_start = epsilon_start
-        self.epsilon_end = epsilon_end
-        self.discount_rate = discount_rate
+
         self.learning_rate = lr
-        self.buffer_size = buffer_size
-        self.min_replay_size = min_replay_size
-        self.replay_batch_size = replay_batch_size
-        self.update_freq_ratio = update_freq_ratio
-        self.n_simuls = n_simuls
-        self.seed = seed
 
-        self.replay_memory = ExperienceReplay(self.env, self.device, self.buffer_size, self.min_replay_size, seed = self.seed)
-        self.online_network = DQN(self.env, self.learning_rate).to(self.device)
-        
-        
-        #Solution:
-        self.target_network = DQN(self.env, self.learning_rate).to(self.device)
-        self.target_network.load_state_dict(self.online_network.state_dict())
+        if(mode=='train'):
+            
+            #Preprocessing data for training and validation
+            PP = Preprocess_Continous()
+            if(dataset_big):
+                train_dict = PP.preprocess_big(train_file_path)
+                PP.preprocess_big(val_file_path,is_validate=True,train_values=train_dict)
+            
+            else:
+                train_dict,_ = PP.preprocess_small(train_file_path)
+                PP.preprocess_small(val_file_path,is_validate=True,train_values=train_dict)
+            
+            with open(os.path.join(model_base_path,'train_mean_std.bin'),'wb') as f:
+                    pickle.dump(train_dict,f)
+            print("training dataset preprocessing values saved to disk")
+            
+            if(not os.path.exists(data_base_path)):
+                raise IOError("Processed Data Files do not exist!!!")
+            
+            feature_set = 'big' if dataset_big else 'small'
+            with open(os.path.join(data_base_path,f'train_data/train_{feature_set}.npy'),'rb') as f:
+                train_ary = np.load(f)
+            
+            with open(os.path.join(data_base_path,f'val_data/val_{feature_set}.npy'),'rb') as f:
+                val_ary = np.load(f)
 
-        #seeding random number generator for sampling
-        self.seed = seed
-        random.seed(self.seed)
+            train_env = DamAgent(train_ary,seed=seed)
+            val_env = DamAgent(val_ary,seed=seed)
+
+            self.env = train_env
+            self.val_env = val_env
+
+            self.epsilon_decay = epsilon_decay
+            self.epsilon_start = epsilon_start
+            self.epsilon_end = epsilon_end
+
+            self.discount_rate = discount_rate
+            
+            self.buffer_size = buffer_size
+            self.min_replay_size = min_replay_size
+            self.replay_batch_size = replay_batch_size
+
+            self.update_freq_ratio = update_freq_ratio
+            self.n_simuls = n_simuls
+            
+            self.seed = seed
+            random.seed(self.seed)
+
+            self.replay_memory = ExperienceReplay(self.env, self.device, self.buffer_size, self.min_replay_size, seed = self.seed)
+
+            self.online_network = DQN(self.env, self.learning_rate).to(self.device)
+        
+            self.target_network = DQN(self.env, self.learning_rate).to(self.device)
+            self.target_network.load_state_dict(self.online_network.state_dict())
+
+        elif(mode=='validate_custom'):
+            pass
+        elif(mode=='validate_standard'):
+            pass
+        else:
+            raise ValueError("Invalid Mode for initialising DDQN agent!!!")
+            
         
     def choose_action(self, step:int, observation, greedy = False) -> tuple:
         
