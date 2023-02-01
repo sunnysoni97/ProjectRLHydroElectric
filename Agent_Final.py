@@ -93,7 +93,7 @@ class DamAgent(gym.Env):
     def __convert_action_to_text(self,action:int) -> str:
         return self.base_action_list[action]    
     
-    def __generate_reward(self, bool_buy:bool,mkt_price:float=0.0) -> float:
+    def __generate_reward(self, bool_buy:bool) -> float:
         
         max_delta = 5*3600
         
@@ -122,12 +122,8 @@ class DamAgent(gym.Env):
             pot_energy = 1000*eff_factor*delta*9.81*self.base_height
         
         pot_energy /= 3.6e9
-        if(self.is_tabular):
-            reward = -pot_energy * mkt_price
-        else:
-            reward = -pot_energy * self.price
+        reward = -pot_energy * self.price
         
-        # curr_water_level = self.__get_obs()[-1]
         self.clock += 1
         self.price = self.prices[self.clock]
         self.state = self.state_space[self.clock]
@@ -148,13 +144,13 @@ class DamAgent(gym.Env):
 
             if(action_string == 'sell'):   
                 if(self.is_tabular):
-                    reward = self.__generate_reward(bool_buy=False,mkt_price=mkt_price)
+                    reward = self.__generate_reward(bool_buy=False)
                 else:
                     reward = self.__generate_reward(bool_buy=False)
             
             elif(action_string == 'buy'):  
                 if(self.is_tabular):
-                    reward = self.__generate_reward(bool_buy=True,mkt_price=mkt_price)
+                    reward = self.__generate_reward(bool_buy=True)
                 else:
                     reward = self.__generate_reward(bool_buy=True)
 

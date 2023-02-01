@@ -273,7 +273,7 @@ class DDQNAgent:
         Returns:
         average_reward_list = a list of averaged rewards over 100 episodes of playing the game
         '''
-        obs, _ = self.env.reset(do_random=True)
+        obs, _ = self.env.reset(do_random=False)
         average_reward_list = [-34000]
         episode_reward = 0.0
         
@@ -297,7 +297,7 @@ class DDQNAgent:
         
             if done:
             
-                obs, _ = self.env.reset(do_random=True)
+                obs, _ = self.env.reset(do_random=False)
                 self.replay_memory.add_reward(episode_reward)
                 print(f'Buffer state : {self.replay_memory.reward_buffer}')
                 self.validate()

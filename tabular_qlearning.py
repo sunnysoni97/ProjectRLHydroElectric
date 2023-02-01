@@ -1,11 +1,11 @@
-from Agent import DamAgent
+from Agent_Final import DamAgent
 import numpy as np
 import os
 
 class QLearnerTabular():
     def __init__(self, train_data:np.ndarray, val_data:np.ndarray, model_path:os.PathLike, discount_rate:float=0.95) -> None:
-        self.train_env = DamAgent(train_data)
-        self.val_env = DamAgent(val_data)
+        self.train_env = DamAgent(train_data, is_tabular=True)
+        self.val_env = DamAgent(val_data, is_tabular=True)
         self.discount_rate = discount_rate
         self.action_space = self.train_env.action_space.n
         self.model_path = model_path
@@ -129,7 +129,7 @@ class QLearnerTabular():
                     
                 #Now sample the next_state, reward, done and info from the environment
                 
-                next_state, reward, terminated, truncated, info = self.train_env.step(action,state[0]) # step returns 5 outputs
+                next_state, reward, terminated, truncated, info = self.train_env.step(action) # step returns 5 outputs
                 next_state = next_state.astype(int)
                 done =  terminated or truncated
                 
@@ -194,7 +194,7 @@ class QLearnerTabular():
             action = np.argmax(self.q_table[state[0]-1, state[1]-1, state[2]-1,state[3]-1, :])
             action_list.append(action)
             mkt_price = state[0]
-            state, reward, done, _, _ = self.val_env.step(action,mkt_price)
+            state, reward, done, _, _ = self.val_env.step(action)
             action_taken = reward/mkt_price
             state = state.astype(int)
             total_rewards.append(reward)
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     QAgent = QLearnerTabular(train_data=training_data, val_data=validation_data, model_path=def_model_path, discount_rate=0.95)
 
     lr = 0.10
-    simulations = 10000
+    simulations = 1000
 
     QAgent.train(simulations=simulations,learning_rate=lr,early_stopping_value=500,early_stopping=True)
     print("Validation of Best Model running : ")
