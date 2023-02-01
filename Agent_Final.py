@@ -34,7 +34,6 @@ class DamAgent(gym.Env):
         
         #Filling state space with the data
         
-        print(data.shape)
         
         if(self.is_tabular):
             self.state_space =np.concatenate((data[:,:-1], np.full((data.shape[0], 1),fill_value=5), np.full((data.shape[0], 1),fill_value=self.base_vol/2)), axis=1)
@@ -43,7 +42,6 @@ class DamAgent(gym.Env):
         
         #filling prices for reward generation
 
-        print(self.state_space.shape)
         self.prices = data[:,-1]
 
         #initialising base state
@@ -101,7 +99,7 @@ class DamAgent(gym.Env):
         
         if(bool_buy):
             eff_factor = 0.8
-            max_delta *= eff_factor
+            # max_delta *= eff_factor
 
             if(cur_water_lvl+max_delta > self.base_vol):
                 delta = self.base_vol - cur_water_lvl
