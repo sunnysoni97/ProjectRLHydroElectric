@@ -152,9 +152,9 @@ class DDQNAgent:
                  buffer_size:int=int(2e4), min_replay_size:int=int(1e4), replay_batch_size:int=100, update_freq_ratio:float=0.015, 
                  n_simuls:int=5, seed:int = None) -> None:
       
-        model_base_path = os.path.join(os.path.dirname(__file__),'model/ddqn/')
-        if(not os.path.exists(model_base_path)):
-            os.makedirs(model_base_path)
+        self.model_base_path = os.path.join(os.path.dirname(__file__),'model/ddqn/')
+        if(not os.path.exists(self.model_base_path)):
+            os.makedirs(self.model_base_path)
         
         data_base_path = os.path.join(os.path.dirname(__file__),'data/')
 
@@ -174,7 +174,7 @@ class DDQNAgent:
                 train_dict,_ = PP.preprocess_small(train_file_path)
                 PP.preprocess_small(val_file_path,is_validate=True,train_values=train_dict)
             
-            with open(os.path.join(model_base_path,'train_mean_std.bin'),'wb') as f:
+            with open(os.path.join(self.model_base_path,'train_mean_std.bin'),'wb') as f:
                     pickle.dump(train_dict,f)
             print("training dataset preprocessing values saved to disk")
             
@@ -398,6 +398,23 @@ class DDQNAgent:
             state = next_state
 
         print(f"Validation reward = {episode_rew}")
+    
+    def save_network_to_disk(self) -> None:
+        with open(os.path.join(self.model_base_path,'best_online_net.bin'),'wb') as f:
+            torch.save(self.online_network.state_dict(),f)
+        print(f"Best network saved to {self.model_base_path} : best_online_net.bin")
+
+    def load_network_from_disk(self) -> None:
+        model_path = os.path.join(self.model_base_path,'best_online_net.bin')
+        
+        if(not os.path.exists(model_path)):
+            raise IOError("Best model doesn't exist on disk!!!")
+        
+        with open(model_path,'rb') as f:
+            disk_state_dict = torch.load(f)
+            self.online_network.load_state_dict(disk_state_dict)
+        
+        print(f"Best network loaded from {self.model_base_path} : best_online_net.bin")
         
 
 
