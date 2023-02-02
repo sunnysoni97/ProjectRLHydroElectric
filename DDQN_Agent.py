@@ -150,7 +150,7 @@ class DDQNAgent:
     
     def __init__(self, mode:str='validate_custom', dataset_big:bool=False, train_file_path:str='train.xlsx', val_file_path:str='validate.xlsx', device:str='cpu', 
                  epsilon_decay:int=int(2e4), epsilon_start:float=1.0, epsilon_end:float=0.05, discount_rate:float=0.99, lr:float=5e-4, 
-                 buffer_size:int=int(2e4), min_replay_size:int=int(1e4), replay_batch_size:int=100, update_freq_ratio:float=0.015, 
+                 buffer_size:int=int(2e4), min_replay_size:int=int(1e4), replay_batch_size:int=100, update_freq_ratio:float=0.015, val_check_step:int=1000,
                  n_simuls:int=5, seed:int = None) -> None:
       
         self.model_base_path = os.path.join(os.path.dirname(__file__),'model/ddqn/')
@@ -209,6 +209,7 @@ class DDQNAgent:
             self.replay_batch_size = replay_batch_size
 
             self.update_freq_ratio = update_freq_ratio
+            self.val_check_step = val_check_step
             self.n_simuls = n_simuls
             
             self.seed = seed
@@ -410,7 +411,7 @@ class DDQNAgent:
 
             #Calculate after each 100 episodes an average that will be added to the list
                     
-            if((step+1) % 1000 == 0 and (step+1) % 2000 != 0):
+            if((step+1) % self.val_check_step == 0 and (step+1) % 2000 != 0):
                 
                 reward_val,_,_ = self.validate()
 
