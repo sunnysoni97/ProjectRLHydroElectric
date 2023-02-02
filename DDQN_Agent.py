@@ -239,8 +239,8 @@ class DDQNAgent:
             self.model_base_path = os.path.join(os.path.dirname(__file__))
             
             preprocess_dict_path = os.path.join(os.path.dirname(__file__),'train_mean_std.bin')
-            #if(not os.path.exists(preprocess_dict_path)):
-            #    raise IOError("Preprocessing value dictionary not present in the folder!!!")
+            if(not os.path.exists(preprocess_dict_path)):
+                raise IOError("Preprocessing value dictionary not present in the folder!!!")
 
             with open(preprocess_dict_path,'rb') as f:
                 self.pp_values_dict = pickle.load(f)
@@ -410,7 +410,17 @@ class DDQNAgent:
 
             #Calculate after each 100 episodes an average that will be added to the list
                     
-            if (step+1) % 2500 == 0:
+            if((step+1) % 1000 == 0 and (step+1) % 2000 != 0):
+                
+                reward_val,_,_ = self.validate()
+
+                if(reward_val>best_val_score):
+                    print(f"Best validation score : {reward_val}")
+                    self.save_network_to_disk()
+                    best_val_score=reward_val
+
+            
+            if (step+1) % 2000 == 0:
                 reward_train,_,_ = self.validate(is_train=True)
                 reward_val,_,_ = self.validate()
 

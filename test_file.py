@@ -1,18 +1,7 @@
-from DDQN_Agent import DDQNAgent
-import numpy as np
+import shutil
+import os
 
 if __name__ == "__main__":
-    
-    n_simuls = 5
-    print(f"Training for {n_simuls} simulations")
-    agent = DDQNAgent(mode='train',dataset_big=False,seed=123,n_simuls=n_simuls)
-    rewards_train, rewards_val = agent.train_agent()
-    print(f'Max training reward : {np.max(rewards_train)}')
-    print(f'Max validation reward : {np.max(rewards_val)}')
-
-    print("-----------------VALIDATING-----------------")
-    val_agent = DDQNAgent(mode='validate_custom',dataset_big=False,seed=123)
-    total_rew = val_agent.validate_best()
-    print(f'Total rew : {total_rew}')
-    print("DONE")
-
+    dst_file = os.path.join(os.path.dirname(__file__),'requirements.txt')
+    src_file = os.path.join(os.path.dirname(__file__),'rough_space/requirements.txt')
+    shutil.copy2(src=src_file,dst=dst_file)

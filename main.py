@@ -2,6 +2,14 @@ from TestEnv import HydroElectric_Test
 import argparse
 import matplotlib.pyplot as plt
 from DDQN_Agent import DDQNAgent
+import os
+import shutil
+
+def train(n_simuls:int=5) -> None:
+    print(f"Training for {n_simuls} simulations")
+    train_agent = DDQNAgent(mode='train', seed=123, n_simuls=n_simuls)
+    _, _ = train_agent.train_agent()
+    print("-----------------TRAINING DONE----------------------")
 
 
 parser = argparse.ArgumentParser()
@@ -11,6 +19,18 @@ args = parser.parse_args()
 env = HydroElectric_Test(path_to_test_data=args.excel_file)
 total_reward = []
 cumulative_reward = []
+
+
+
+model_path = os.path.join(os.path.dirname(__file__),'best_online_net.bin')
+pp_path = os.path.join(os.path.dirname(__file__),'train_mean_std.bin')
+
+if(not os.path.exists(model_path) or not os.path.exists(pp_path)):
+    train(1)
+    new_model_path = os.path.join(os.path.dirname(__file__),'model/ddqn/best_online_net.bin')
+    new_pp_path = os.path.join(os.path.dirname(__file__),'model/ddqn/train_mean_std.bin')
+    shutil.copy2(src=new_model_path,dst=model_path)
+    shutil.copy2(src=new_pp_path,dst=pp_path)
 
 RL_agent = DDQNAgent(mode='validate_standard')
 

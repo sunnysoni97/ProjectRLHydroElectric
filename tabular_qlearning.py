@@ -1,6 +1,7 @@
 from Agent_Final import DamAgent
 import numpy as np
 import os
+from preprocess import Preprocess_Tabular
 
 class QLearnerTabular():
     def __init__(self, train_data:np.ndarray, val_data:np.ndarray, model_path:os.PathLike, discount_rate:float=0.95) -> None:
@@ -11,12 +12,6 @@ class QLearnerTabular():
         self.model_path = model_path
         print("Q Learning Agent initialised")
         
-    def __state_to_index(self, state_ar:np.ndarray) -> int:
-        out = 0
-        for i in range(len(state_ar)-1,-1,-1):
-            out += state_ar[i]*pow(10,len(state_ar)-1-i)
-        return int(out)
-    
     def __init_q_table(self) -> None:
         max_state_price = np.max(np.max(self.train_env.state_space[:,0],axis=0)).astype(int)
         max_state_hour = np.max(np.max(self.train_env.state_space[:,1],axis=0)).astype(int)
@@ -185,14 +180,16 @@ class QLearnerTabular():
         
         total_rewards = []
         total_actions = []
+        steps = []
         done = False
 
         state = self.val_env.reset()[0]
         state = state.astype(int)
-        action_list = []
+
+        cur_step = 0
+
         while(not done):
             action = np.argmax(self.q_table[state[0]-1, state[1]-1, state[2]-1,state[3]-1, :])
-            action_list.append(action)
             mkt_price = state[0]
             state, reward, done, _, _ = self.val_env.step(action)
             action_taken = reward/mkt_price
@@ -210,6 +207,12 @@ class QLearnerTabular():
 
 
 if __name__ == "__main__":
+    
+    PP = Preprocess_Tabular()
+    
+    PP.preprocess_discrete('train.xlsx')
+    PP.preprocess_discrete('validate.xlsx',is_validate=True)
+
     train_file_path = os.path.join(os.path.dirname(__file__),'data/train_data/train_discrete.npy')
     with open(train_file_path,'rb') as f:
         training_data = np.load(f)
@@ -225,7 +228,7 @@ if __name__ == "__main__":
     QAgent = QLearnerTabular(train_data=training_data, val_data=validation_data, model_path=def_model_path, discount_rate=0.95)
 
     lr = 0.10
-    simulations = 1000
+    simulations = 500
 
     QAgent.train(simulations=simulations,learning_rate=lr,early_stopping_value=500,early_stopping=True)
     print("Validation of Best Model running : ")
