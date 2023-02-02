@@ -227,12 +227,18 @@ if __name__ == "__main__":
 
     def_model_path = os.path.join(os.path.dirname(__file__),'model/tabular_q/model.npy')
     
+    
     QAgent = QLearnerTabular(train_data=training_data, val_data=validation_data, model_path=def_model_path, discount_rate=0.95)
 
     lr = 0.10
     simulations = 10000
 
-    QAgent.train(simulations=simulations,learning_rate=lr,early_stopping_value=500,early_stopping=True)
+    #change this to train new model
+    mode='val'
+
+    if(mode=='train'):
+        QAgent.train(simulations=simulations,learning_rate=lr,early_stopping_value=500,early_stopping=True)
+
     print("Validation of Best Model running : ")
     rewards = QAgent.validate(load_model=True)
     print(f"Total simulation reward on validation set = {rewards}")
