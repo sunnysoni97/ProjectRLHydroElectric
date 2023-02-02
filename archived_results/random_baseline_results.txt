@@ -1,0 +1,9 @@
+Step number : 1
+Total reward so far: 17.48$
+Step number : 5001
+Total reward so far: -31323.62$
+Step number : 10001
+Total reward so far: -69398.55$
+Step number : 15001
+Total reward so far: -103778.65$
+Total reward of the episode : -122705.05$ (Big Benjis)
