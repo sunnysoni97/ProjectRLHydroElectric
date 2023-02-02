@@ -32,7 +32,7 @@ if __name__ == "__main__":
     #setting month and vol as consts
     
     month = 6
-    hour = 19
+    hour = 1
 
     #making bins for smoothing
     
@@ -56,11 +56,11 @@ if __name__ == "__main__":
     surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
                         linewidth=0, antialiased=False)
 
-    ax.set_xlabel('Market Price (Z-Normalised)', fontsize = 14)
-    ax.set_ylabel('Volume (Z-Normalised)', fontsize = 14)
+    ax.set_xlabel('Market Price (Z-Normalised)', fontsize = 12)
+    ax.set_ylabel('Volume (Z-Normalised)', fontsize = 12)
     ax.set_zlabel('Value Function', fontsize = 14)
     fig.colorbar(surf, shrink=0.5, aspect=5)
-    ax.set_title('Value function vs Price and Hour', fontsize = 18)
+    ax.set_title('Value function with Price and Volume', fontsize = 18)
     
     #saving to disk
     
