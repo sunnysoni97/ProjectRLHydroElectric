@@ -2,6 +2,7 @@ from Agent_Final import DamAgent
 import numpy as np
 import os
 from preprocess import Preprocess_Tabular
+import pandas as pd
 
 class QLearnerTabular():
     def __init__(self, train_data:np.ndarray, val_data:np.ndarray, model_path:os.PathLike, discount_rate:float=0.95) -> None:
@@ -196,12 +197,13 @@ class QLearnerTabular():
             state = state.astype(int)
             total_rewards.append(reward)
             total_actions.append(action_taken)
+            steps.append(cur_step)
+            cur_step += 1
         
-        with open(os.path.join(os.path.dirname(self.model_path),'experiment_results.txt'),'wt') as f:
-            f.write(f"Total reward on validation set : {np.sum(total_rewards)}\n")
-            f.write(str(total_rewards))
-            f.write(f"\nTotal action on validation set : {np.sum(total_actions)}\n")
-            f.write(str(total_actions))
+        
+        df_dict = {'reward':total_rewards,'action':total_actions,'step':steps}
+        df = pd.DataFrame(data=df_dict)
+        df.to_csv(os.path.join(os.path.dirname(self.model_path),'cummulative_rewards_tab.csv'),index=False)
         
         return np.sum(total_rewards)
 
@@ -228,7 +230,7 @@ if __name__ == "__main__":
     QAgent = QLearnerTabular(train_data=training_data, val_data=validation_data, model_path=def_model_path, discount_rate=0.95)
 
     lr = 0.10
-    simulations = 500
+    simulations = 10000
 
     QAgent.train(simulations=simulations,learning_rate=lr,early_stopping_value=500,early_stopping=True)
     print("Validation of Best Model running : ")

@@ -5,8 +5,14 @@ from matplotlib import cm
 
 #function to convert plotting features to observation
 
-def make_observation(price:float,hour:int) -> np.ndarray:
-    obs = np.array(object=[price,hour,0.0,0.0])
+def make_observation(price:float,hour:int, month:int,vol_lvl:int) -> np.ndarray:
+    low_consts = [-1.6,-1]
+    high_consts = [1.6,1]
+    month_values = np.linspace(start=low_consts[0],stop=high_consts[0],num=12)
+    vol_values = np.linspace(start=low_consts[1],stop=high_consts[1],num=10)
+    month = month_values[month-1]
+    vol = vol_values[vol_lvl-1]
+    obs = np.array(object=[price,hour,month,vol])
     return obs
 
 if __name__ == "__main__":
@@ -19,6 +25,11 @@ if __name__ == "__main__":
 
     low = [-2.0,-1.66]
     high = [2.0,1.66]
+
+    #setting month and vol as consts
+    
+    month = 6
+    vol = 5
 
     #making bins for smoothing
     
@@ -33,7 +44,7 @@ if __name__ == "__main__":
 
     for i in range(len(X)):
         for j in range(len(Y)):
-            obs = make_observation(X[0][i], Y[j][0])
+            obs = make_observation(X[0][i], Y[j][0],month=month,vol_lvl=vol)
             Z[i][j] = val_agent.return_q_value(obs)
     fig = plt.figure(figsize =(10,10))
     ax = plt.axes(projection='3d')
