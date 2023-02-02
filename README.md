@@ -43,4 +43,8 @@ In all the experiment files, you can change the mode variable to 'train' to trai
 
 ## Validation on standard environment :
 
-main.py makes use of our pretrained ddqn agent using the basic set to work on the validation set provided in validate.xlsx.
+main.py makes use of our pretrained ddqn agent using the basic set to work on the validation set provided in validate.xlsx. The model used for this is provided in the same directory and should work out of the box.
+
+## Model and Data directory
+
+If model and data directory do not exist, the validation will fail to work. Train your models first in these cases before trying to validate the custom environment.
