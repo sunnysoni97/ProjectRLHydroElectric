@@ -73,6 +73,8 @@ dependencies:
       - fastjsonschema==2.16.2
       - fonttools==4.38.0
       - glfw==2.5.5
+      - gym==0.26.2
+      - gym-notices==0.0.8
       - gymnasium==0.27.0
       - gymnasium-notices==0.0.1
       - idna==3.4
@@ -85,6 +87,7 @@ dependencies:
       - jaxlib==0.3.24
       - jsonschema==4.17.3
       - jupyterlab-widgets==3.0.5
+      - kaleido==0.2.1
       - kiwisolver==1.4.4
       - lz4==4.3.2
       - matplotlib==3.6.2

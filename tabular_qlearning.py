@@ -210,6 +210,8 @@ class QLearnerTabular():
 
 if __name__ == "__main__":
     
+    #preprocessing the dataset for our environment
+    
     PP = Preprocess_Tabular()
     
     PP.preprocess_discrete('train.xlsx')
@@ -225,15 +227,18 @@ if __name__ == "__main__":
 
     print("Training and Validation Data Loaded")
 
+    #setting the model path
+    
     def_model_path = os.path.join(os.path.dirname(__file__),'model/tabular_q/model.npy')
     
-    
+    #initialising the agent
+
     QAgent = QLearnerTabular(train_data=training_data, val_data=validation_data, model_path=def_model_path, discount_rate=0.95)
 
     lr = 0.10
     simulations = 10000
 
-    #change this to train new model
+    #change this to 'train' to train new model
     mode='val'
 
     if(mode=='train'):
